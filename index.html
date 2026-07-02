@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Links Web β</title>
+    <link rel="icon" href="favicon.ico">
+    <!-- favicon.ico and icons/*.png are the original Win app's own toolbar
+         bitmaps (Links/*.bmp, double-link.ico), background-keyed to
+         transparent PNG - see icons/src/convert.py for provenance/rebuild. -->
+
     <style>
         :root {
             color-scheme: dark;
@@ -26,10 +31,13 @@
 
         .icon-btn {
             background: #333; color: var(--text); border: 1px solid var(--border); border-radius: 4px;
-            padding: 6px 9px; cursor: pointer; font-size: 13px; line-height: 1.2; white-space: nowrap;
+            padding: 5px 9px; cursor: pointer; font-size: 13px; line-height: 1.2; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 6px;
         }
         .icon-btn:hover { background: #3d3d3d; }
         .icon-btn.active { background: var(--accent); color: #08243d; border-color: var(--accent); }
+        .icon-btn .icon-img { width: 20px; height: 20px; image-rendering: pixelated; flex: none; }
+        .icon-btn .icon-label { white-space: nowrap; }
 
         #help-bar { min-height: 2.6em; padding: 6px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; font-size: 12.5px; color: var(--muted); }
         #help-bar.persistent { color: var(--text); }

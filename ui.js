@@ -139,14 +139,37 @@ class UI {
 
     // --- toolbar -------------------------------------------------------------
 
-    _makeButton(container, { text, help, onClick, toggleGetter, activeClass = 'active' }) {
+    /**
+     * `icon`/`iconOn` are filenames under icons/ - the original app's own
+     * toolbar bitmaps (icons/src/*.bmp, converted by icons/src/convert.py).
+     * For toggle buttons the original swapped icon graphics the same way it
+     * swapped caption text (see class header comment): `icon` shows while
+     * inactive, `iconOn` while active - e.g. mdxf shows the "DXF" icon while
+     * viewing the optimized curve (inviting a click to switch to DXF) and
+     * the "optimize" icon while viewing DXF (hecken.h:706).
+     */
+    _makeButton(container, { text, help, onClick, toggleGetter, activeClass = 'active', icon, iconOn }) {
         const btn = document.createElement('button');
         btn.className = 'icon-btn';
         btn.type = 'button';
+
+        let img = null;
+        if (icon) {
+            img = document.createElement('img');
+            img.className = 'icon-img';
+            img.alt = '';
+            btn.appendChild(img);
+        }
+        const label = document.createElement('span');
+        label.className = 'icon-label';
+        btn.appendChild(label);
+
         const render = () => {
-            btn.textContent = typeof text === 'function' ? text() : text;
-            if (toggleGetter) btn.classList.toggle(activeClass, !!toggleGetter());
+            const active = toggleGetter ? !!toggleGetter() : false;
+            label.textContent = typeof text === 'function' ? text() : text;
+            if (toggleGetter) btn.classList.toggle(activeClass, active);
             if (help) btn.title = typeof help === 'function' ? help() : help;
+            if (img) img.src = `icons/${(active && iconOn) ? iconOn : icon}`;
         };
         render();
         btn.addEventListener('click', (e) => onClick(e, render));
@@ -161,24 +184,29 @@ class UI {
         const sim = this.sim;
 
         this._makeButton(this.toolbar, {
-            text: 'DXF読込', help: 'DXF95/2000年形式で保存されたファイルのポリラインと円のみ読み込めます　回転の中心を原点に指定して下さい',
+            text: 'DXF読込', icon: 'new.png',
+            help: 'DXF95/2000年形式で保存されたファイルのポリラインと円のみ読み込めます　回転の中心を原点に指定して下さい',
             onClick: () => this.callbacks.runDxfLoadFlow(),
         });
         this._makeButton(this.toolbar, {
-            text: '開く', help: '拡張子問わずLinksで保存したファイルのみ開けます。ドラッグ＆ドロップでも可能。',
+            text: '開く', icon: 'open.png',
+            help: '拡張子問わずLinksで保存したファイルのみ開けます。ドラッグ＆ドロップでも可能。',
             onClick: () => this.fileInput.click(),
         });
         this._makeButton(this.toolbar, {
-            text: '上書き保存', help: '保存してない場合は、名前を付けて保存をします',
+            text: '上書き保存', icon: 'save.png',
+            help: '保存してない場合は、名前を付けて保存をします',
             onClick: () => this.callbacks.saveFile(),
         });
         this._makeButton(this.toolbar, {
-            text: '名前を付けて保存', help: '拡張子は保存/読込みには関係無いので何でも構いません。',
+            text: '名前を付けて保存', icon: 'saveas.png',
+            help: '拡張子は保存/読込みには関係無いので何でも構いません。',
             onClick: () => this.callbacks.saveFile(true),
         });
 
         this._makeButton(this.toolbar, {
             text: () => (sim.menu.mpara.value ? 'パラメータ表を隠す' : 'パラメータ表を表示'),
+            icon: 'menuon.png', iconOn: 'close.png',
             help: 'パラメータ表は，数値をホイール回転などにより操作する表です　ダブルクリックで直接入力，ホイールクリックで回転時の増加量が変化します',
             toggleGetter: () => sim.menu.mpara.value,
             onClick: (e, render) => {
@@ -189,53 +217,62 @@ class UI {
         });
         this._makeButton(this.toolbar, {
             text: () => (sim.menu.mstop.value ? '回転停止' : '回転開始'),
+            icon: 'start.png', iconOn: 'stop.png',
             help: '調整をする際には回転を停止させホイールで角度を変えると確認しやすいです',
             toggleGetter: () => sim.menu.mstop.value,
             onClick: (e, render) => { sim.menu.mstop.value = !sim.menu.mstop.value; render(); },
         });
         this._makeButton(this.toolbar, {
             text: () => (sim.menu.mturn.value ? '反時計回りにする' : '時計回りにする'),
+            icon: 'lturn.png', iconOn: 'rturn.png',
             help: '回転方向を切替えます',
+            toggleGetter: () => sim.menu.mturn.value,
             onClick: (e, render) => { sim.menu.mturn.value = !sim.menu.mturn.value; render(); },
         });
         this._makeButton(this.toolbar, {
             text: () => (sim.dxf ? '最適化曲線表示にする' : 'DXF表示にする'),
+            // hecken.h:706 - icon follows the same "shows the action" convention
+            // as the caption: DXF-icon while viewing the curve, opt-icon while viewing DXF.
+            icon: 'dxf.png', iconOn: 'opt.png',
             help: '最適化曲線表示と読込んだDXF表示（読込んでない場合は何も表示されません）を切替えします',
+            toggleGetter: () => sim.dxf,
             onClick: (e, render) => { sim.setDxfMode(!sim.dxf); this.refreshParamPanel(); render(); },
         });
         this._makeButton(this.toolbar, {
-            text: 'リンクサイド変更', help: 'リンク機構を他の向きに変更する。',
+            text: 'リンクサイド変更', icon: 'lside.png', help: 'リンク機構を他の向きに変更する。',
             onClick: () => sim.toggleSide(),
         });
 
         this._makeButton(this.toolbar, {
-            text: 'AutoCADコマンドをコピー',
+            text: 'AutoCADコマンドをコピー', icon: 'paste.png',
             help: 'AutoCADのコマンドラインに貼付けると，この画面と同じように作図されます　Shiftを押しながらクリックすると脚のみが、Ctrlではシルエットが作図されます。',
             onClick: (e) => this.callbacks.copyAutoCadCommand(e.shiftKey, e.ctrlKey),
         });
         this._makeButton(this.toolbar, {
-            text: 'DXFファイルを出力',
+            text: 'DXFファイルを出力', icon: 'pasteDXF.png',
             help: 'この画面と同じものがDXFファイルとして出力されます　Shiftを押しながらクリックすると脚のみが、Ctrlではシルエットが作図されます。',
             onClick: (e) => this.callbacks.exportDxf(e.shiftKey, e.ctrlKey),
         });
 
         this._makeButton(this.toolbar, {
-            text: '端部軌道を表示', help: '最適化曲線の端部軌道を表示します（DXF時には表示されません）',
+            text: '端部軌道を表示', icon: 'orbit.png', help: '最適化曲線の端部軌道を表示します（DXF時には表示されません）',
             onClick: () => sim.toggleBothLegOrbits(),
         });
         this._makeButton(this.toolbar, {
             text: () => (sim.menu.mgraph.value ? 'グラフを隠す' : 'グラフを表示'),
+            icon: 'graph.png', iconOn: 'close.png',
             help: '表から選択する任意の点の加速度/速度をグラフとして表示します',
             toggleGetter: () => sim.menu.mgraph.value,
             onClick: (e, render) => { sim.setGraphVisible(!sim.menu.mgraph.value); this.refreshParamPanel(); render(); },
         });
         this._makeButton(this.toolbar, {
-            text: 'アニメーション出力',
+            text: 'アニメーション出力', icon: 'anime.png',
             help: '範囲を選択してWebM動画として出力します（元のアニメーションGIF機能は、開発者自身が「現在は競技会でGIF提出が禁止のため需要がないだろう」としていたため、より汎用的な動画形式に置き換えています）',
             onClick: () => this.callbacks.startAnimationCapture(),
         });
         this._makeButton(this.toolbar, {
             text: () => (sim.menu.mstatus.value ? 'ステータスバーを隠す' : 'ステータスバーを表示'),
+            icon: 'helpon.png', iconOn: 'close.png',
             toggleGetter: () => sim.menu.mstatus.value,
             onClick: (e, render) => {
                 sim.menu.mstatus.value = !sim.menu.mstatus.value;
