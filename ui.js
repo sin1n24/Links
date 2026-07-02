@@ -22,14 +22,12 @@ class UI {
         this.paramPanel = document.getElementById('param-panel');
         this.helpBar = document.getElementById('help-bar');
         this.logContainer = document.getElementById('log-container');
-        this.fileIoContainer = document.getElementById('file-io');
         this.modalOverlay = document.getElementById('modal-overlay');
         this.modalText = document.getElementById('modal-text');
         this.modalButtons = document.getElementById('modal-buttons');
         this.canvasWrap = document.getElementById('canvas-wrap');
         this.canvas = document.getElementById('main-canvas');
         this.selectRect = document.getElementById('select-rect');
-        this.bgColorSlider = document.getElementById('bg-color-slider');
         this.fileInput = document.getElementById('file-input');
         this.dxfFileInput = document.getElementById('dxf-file-input');
 
@@ -37,16 +35,34 @@ class UI {
         this._rowState = new Map(); // per-parameter wheel-sensitivity, keyed by row key
         this._toolbarRenderers = []; // rebuilt once, in _buildToolbar/_buildHiddenModeRow
         this._rowRenderers = []; // rebuilt every refreshParamPanel() call
+        this._betaFeaturesVisible = false; // beta-features row starts collapsed every load (not persisted)
 
+        this._buildDarkModeToggle();
         this._buildToolbar();
         this._buildHiddenModeRow();
+        this._applyBetaFeaturesVisibility();
         this._buildFileIo();
-        this._buildBgColorControl();
         this.refreshParamPanel();
         this._setupDragDrop();
         this._setupShiftTracking();
 
         this.setHelp(null);
+    }
+
+    // --- dark mode (instruction doc §1/§2 - a single light/dark toggle
+    // replaces the old free-form background-brightness slider, driving the
+    // CSS theme and the canvas background together). ------------------------
+
+    _buildDarkModeToggle() {
+        const cfg = Config.load();
+        this._setDarkMode(!!cfg.darkMode);
+    }
+
+    _setDarkMode(on) {
+        document.body.classList.toggle('dark', on);
+        this.sim.bgColor = on ? 0 : 255;
+        this.g.backgroundColor = on ? 'rgb(0,0,0)' : 'rgb(255,255,255)';
+        Config.save({ darkMode: on });
     }
 
     // --- logging / help bar -------------------------------------------------
@@ -148,7 +164,7 @@ class UI {
      * viewing the optimized curve (inviting a click to switch to DXF) and
      * the "optimize" icon while viewing DXF (hecken.h:706).
      */
-    _makeButton(container, { text, help, onClick, toggleGetter, activeClass = 'active', icon, iconOn }) {
+    _makeButton(container, { text, help, onClick, toggleGetter, activeClass = 'active', icon, iconOn, emoji, emojiOn }) {
         const btn = document.createElement('button');
         btn.className = 'icon-btn';
         btn.type = 'button';
@@ -160,6 +176,15 @@ class UI {
             img.alt = '';
             btn.appendChild(img);
         }
+        // No original bitmap exists for a couple of new (non-Win-app)
+        // controls, e.g. the dark-mode toggle - an emoji glyph fills the
+        // same "icon-only" slot instead so §4's icon-only rule still holds.
+        let emojiSpan = null;
+        if (emoji) {
+            emojiSpan = document.createElement('span');
+            emojiSpan.className = 'icon-img icon-emoji';
+            btn.appendChild(emojiSpan);
+        }
         const label = document.createElement('span');
         label.className = 'icon-label';
         btn.appendChild(label);
@@ -170,6 +195,7 @@ class UI {
             if (toggleGetter) btn.classList.toggle(activeClass, active);
             if (help) btn.title = typeof help === 'function' ? help() : help;
             if (img) img.src = `icons/${(active && iconOn) ? iconOn : icon}`;
+            if (emojiSpan) emojiSpan.textContent = (active && emojiOn) ? emojiOn : emoji;
         };
         render();
         btn.addEventListener('click', (e) => onClick(e, render));
@@ -244,11 +270,6 @@ class UI {
         });
 
         this._makeButton(this.toolbar, {
-            text: 'AutoCADコマンドをコピー', icon: 'paste.png',
-            help: 'AutoCADのコマンドラインに貼付けると，この画面と同じように作図されます　Shiftを押しながらクリックすると脚のみが、Ctrlではシルエットが作図されます。',
-            onClick: (e) => this.callbacks.copyAutoCadCommand(e.shiftKey, e.ctrlKey),
-        });
-        this._makeButton(this.toolbar, {
             text: 'DXFファイルを出力', icon: 'pasteDXF.png',
             help: 'この画面と同じものがDXFファイルとして出力されます　Shiftを押しながらクリックすると脚のみが、Ctrlではシルエットが作図されます。',
             onClick: (e) => this.callbacks.exportDxf(e.shiftKey, e.ctrlKey),
@@ -259,27 +280,32 @@ class UI {
             onClick: () => sim.toggleBothLegOrbits(),
         });
         this._makeButton(this.toolbar, {
-            text: () => (sim.menu.mgraph.value ? 'グラフを隠す' : 'グラフを表示'),
-            icon: 'graph.png', iconOn: 'close.png',
-            help: '表から選択する任意の点の加速度/速度をグラフとして表示します',
-            toggleGetter: () => sim.menu.mgraph.value,
-            onClick: (e, render) => { sim.setGraphVisible(!sim.menu.mgraph.value); this.refreshParamPanel(); render(); },
-        });
-        this._makeButton(this.toolbar, {
-            text: 'アニメーション出力', icon: 'anime.png',
-            help: '範囲を選択してWebM動画として出力します（元のアニメーションGIF機能は、開発者自身が「現在は競技会でGIF提出が禁止のため需要がないだろう」としていたため、より汎用的な動画形式に置き換えています）',
+            text: '動画出力', icon: 'anime.png',
+            help: '範囲を選択してWebM動画として出力します',
             onClick: () => this.callbacks.startAnimationCapture(),
         });
         this._makeButton(this.toolbar, {
-            text: () => (sim.menu.mstatus.value ? 'ステータスバーを隠す' : 'ステータスバーを表示'),
-            icon: 'helpon.png', iconOn: 'close.png',
-            toggleGetter: () => sim.menu.mstatus.value,
+            text: () => (document.body.classList.contains('dark') ? 'ライトモードにする' : 'ダークモードにする'),
+            emoji: '🌙', emojiOn: '☀',
+            help: '画面配色をダーク/ライトで切替えます',
+            toggleGetter: () => document.body.classList.contains('dark'),
+            onClick: (e, render) => { this._setDarkMode(!document.body.classList.contains('dark')); render(); },
+        });
+        this._makeButton(this.toolbar, {
+            text: () => (this._betaFeaturesVisible ? 'ベータ版機能を隠す' : 'ベータ版機能表示'),
+            icon: 'property.png',
+            help: 'アークスライダ/デュアルスライダ/ヴァーティカル/ダブルクランク等の試験的な機能と、AutoCADコマンド出力を表示します',
+            toggleGetter: () => this._betaFeaturesVisible,
             onClick: (e, render) => {
-                sim.menu.mstatus.value = !sim.menu.mstatus.value;
-                this.helpBar.style.display = sim.menu.mstatus.value ? '' : 'none';
+                this._betaFeaturesVisible = !this._betaFeaturesVisible;
+                this._applyBetaFeaturesVisibility();
                 render();
             },
         });
+    }
+
+    _applyBetaFeaturesVisibility() {
+        this.hiddenModeRow.classList.toggle('hidden', !this._betaFeaturesVisible);
     }
 
     _buildHiddenModeRow() {
@@ -309,13 +335,14 @@ class UI {
         this._makeButton(this.hiddenModeRow, { text: '脚前部軌道表示', onClick: () => sim.toggleFrontLegOrbit() });
         this._makeButton(this.hiddenModeRow, { text: '脚後部軌道表示', onClick: () => sim.toggleRearLegOrbit() });
         this._makeButton(this.hiddenModeRow, { text: '隠し軌道表示', onClick: () => sim.toggleSecretOrbit() });
+        this._makeButton(this.hiddenModeRow, {
+            text: 'AutoCADコマンドをコピー',
+            help: 'AutoCADのコマンドラインに貼付けると，この画面と同じように作図されます　Shiftを押しながらクリックすると脚のみが、Ctrlではシルエットが作図されます。',
+            onClick: (e) => this.callbacks.copyAutoCadCommand(e.shiftKey, e.ctrlKey),
+        });
     }
 
     _buildFileIo() {
-        const p = document.createElement('p');
-        p.textContent = '.links (JSON) または旧Win版のタブ区切り .links ファイルを開けます。';
-        this.fileIoContainer.appendChild(p);
-
         this.fileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             e.target.value = '';
@@ -323,23 +350,6 @@ class UI {
             const text = await file.text();
             await this.callbacks.openFileText(text, file.name);
         });
-    }
-
-    _buildBgColorControl() {
-        const cfg = Config.load();
-        this.sim.bgColor = cfg.bgColor;
-        this.bgColorSlider.value = cfg.bgColor;
-        this._applyBgColor(cfg.bgColor);
-        this.bgColorSlider.addEventListener('input', () => {
-            const v = parseInt(this.bgColorSlider.value, 10);
-            this.sim.bgColor = v;
-            this._applyBgColor(v);
-            Config.save({ bgColor: v });
-        });
-    }
-
-    _applyBgColor(v) {
-        this.g.backgroundColor = `rgb(${v},${v},${v})`;
     }
 
     // --- parameter panel -----------------------------------------------------
@@ -412,22 +422,31 @@ class UI {
                 help: '基準クランクに対するサブクランクの角度差です' });
         }
 
-        if (sim.exist_graph) {
-            rows.push({
-                key: 'graph', label: 'グラフ描画パラメータ', type: 'enum',
-                options: [
-                    { value: GraphTarget.LEVERJOINT, label: 'レバー支点' },
-                    { value: GraphTarget.TOE, label: 'つま先' },
-                    { value: GraphTarget.GROUND, label: '接地点' },
-                    { value: GraphTarget.CRANKJOINT, label: 'クランク支点' },
-                    { value: GraphTarget.SUBCRANKJOINT, label: 'サブクランク支点' },
-                    { value: GraphTarget.SUBLEVERJOINT, label: 'サブレバー支点' },
-                    { value: GraphTarget.SUBTOE, label: 'サブつま先' },
-                ],
-                get: () => sim.graph_mode, set: (v) => { sim.graph_mode = v; }, focusKey: 'graph',
-                help: '表示するグラフの追跡対象を選択します。アイコンからON/OFFできます。',
-            });
-        }
+        // Graph controls live at the bottom of the parameter panel
+        // (instruction doc §6) instead of behind a toolbar icon: the target
+        // dropdown is always visible (previously it only existed once the
+        // graph was already toggled on, which made it hard to discover),
+        // and a dedicated ON/OFF row replaces the old toolbar toggle.
+        rows.push({
+            key: 'graph', label: 'グラフ追跡対象', type: 'enum',
+            options: [
+                { value: GraphTarget.LEVERJOINT, label: 'レバー支点' },
+                { value: GraphTarget.TOE, label: 'つま先' },
+                { value: GraphTarget.GROUND, label: '接地点' },
+                { value: GraphTarget.CRANKJOINT, label: 'クランク支点' },
+                { value: GraphTarget.SUBCRANKJOINT, label: 'サブクランク支点' },
+                { value: GraphTarget.SUBLEVERJOINT, label: 'サブレバー支点' },
+                { value: GraphTarget.SUBTOE, label: 'サブつま先' },
+            ],
+            get: () => sim.graph_mode, set: (v) => { sim.graph_mode = v; }, focusKey: 'graph',
+            help: 'グラフで追跡する点を選択します。',
+        });
+        rows.push({
+            key: 'graphVisible', label: '速度・加速度グラフを表示', type: 'toggle', rowClass: 'graph-toggle-row',
+            get: () => sim.menu.mgraph.value,
+            set: (v) => { sim.setGraphVisible(v); },
+            help: '選択した点の速度・加速度をグラフとして画面下部に表示します',
+        });
 
         return rows;
     }
@@ -442,7 +461,7 @@ class UI {
 
     _buildParamRow(def) {
         const row = document.createElement('div');
-        row.className = 'param-row' + (def.locked ? ' readonly' : '');
+        row.className = 'param-row' + (def.locked ? ' readonly' : '') + (def.rowClass ? ` ${def.rowClass}` : '');
         if (def.help) row.title = def.help;
 
         const label = document.createElement('label');
@@ -450,11 +469,28 @@ class UI {
 
         const sensitivity = document.createElement('span');
         sensitivity.className = 'sensitivity';
-        if (!def.locked && def.type !== 'enum') {
+        if (!def.locked && def.type !== 'enum' && def.type !== 'toggle') {
             sensitivity.appendChild(document.createElement('i'));
             sensitivity.appendChild(document.createElement('i'));
             sensitivity.appendChild(document.createElement('i'));
             row.appendChild(sensitivity);
+        }
+
+        if (def.type === 'toggle') {
+            label.textContent = typeof def.label === 'function' ? def.label() : def.label;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'icon-btn';
+            const renderBtn = () => {
+                const on = !!def.get();
+                btn.textContent = on ? 'ON' : 'OFF';
+                btn.classList.toggle('active', on);
+            };
+            renderBtn();
+            btn.addEventListener('click', () => { def.set(!def.get()); renderBtn(); });
+            row.appendChild(btn);
+            this._rowRenderers.push(renderBtn);
+            return row;
         }
 
         if (def.type === 'enum') {
