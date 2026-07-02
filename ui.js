@@ -423,12 +423,12 @@ class UI {
         }
 
         // Graph controls live at the bottom of the parameter panel
-        // (instruction doc §6) instead of behind a toolbar icon: the target
-        // dropdown is always visible (previously it only existed once the
-        // graph was already toggled on, which made it hard to discover),
-        // and a dedicated ON/OFF row replaces the old toolbar toggle.
+        // (instruction doc §6) instead of behind a toolbar icon: label,
+        // target dropdown, and ON/OFF toggle share a single row so the
+        // dropdown is always visible and reachable regardless of whether
+        // the graph is currently shown.
         rows.push({
-            key: 'graph', label: 'グラフ追跡対象', type: 'enum',
+            key: 'graph', label: 'グラフ表示', type: 'toggle-select', rowClass: 'graph-toggle-row',
             options: [
                 { value: GraphTarget.LEVERJOINT, label: 'レバー支点' },
                 { value: GraphTarget.TOE, label: 'つま先' },
@@ -438,13 +438,8 @@ class UI {
                 { value: GraphTarget.SUBLEVERJOINT, label: 'サブレバー支点' },
                 { value: GraphTarget.SUBTOE, label: 'サブつま先' },
             ],
-            get: () => sim.graph_mode, set: (v) => { sim.graph_mode = v; }, focusKey: 'graph',
-            help: 'グラフで追跡する点を選択します。',
-        });
-        rows.push({
-            key: 'graphVisible', label: '速度・加速度グラフを表示', type: 'toggle', rowClass: 'graph-toggle-row',
-            get: () => sim.menu.mgraph.value,
-            set: (v) => { sim.setGraphVisible(v); },
+            getSelect: () => sim.graph_mode, setSelect: (v) => { sim.graph_mode = v; }, focusKey: 'graph',
+            getToggle: () => sim.menu.mgraph.value, setToggle: (v) => { sim.setGraphVisible(v); },
             help: '選択した点の速度・加速度をグラフとして画面下部に表示します',
         });
 
@@ -469,7 +464,7 @@ class UI {
 
         const sensitivity = document.createElement('span');
         sensitivity.className = 'sensitivity';
-        if (!def.locked && def.type !== 'enum' && def.type !== 'toggle') {
+        if (!def.locked && def.type !== 'enum' && def.type !== 'toggle' && def.type !== 'toggle-select') {
             sensitivity.appendChild(document.createElement('i'));
             sensitivity.appendChild(document.createElement('i'));
             sensitivity.appendChild(document.createElement('i'));
@@ -490,6 +485,43 @@ class UI {
             btn.addEventListener('click', () => { def.set(!def.get()); renderBtn(); });
             row.appendChild(btn);
             this._rowRenderers.push(renderBtn);
+            return row;
+        }
+
+        if (def.type === 'toggle-select') {
+            // Label, target dropdown, and ON/OFF toggle share one row so the
+            // dropdown stays reachable regardless of whether the graph is
+            // currently shown (previously it only existed while shown).
+            label.textContent = typeof def.label === 'function' ? def.label() : def.label;
+
+            const select = document.createElement('select');
+            for (const opt of def.options) {
+                const o = document.createElement('option');
+                o.value = opt.value;
+                o.textContent = opt.label;
+                select.appendChild(o);
+            }
+            select.value = def.getSelect();
+            select.addEventListener('change', () => {
+                def.setSelect(parseInt(select.value, 10));
+                this.sim.rebirth = true;
+            });
+            row.appendChild(select);
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'icon-btn';
+            const renderBtn = () => {
+                const on = !!def.getToggle();
+                btn.textContent = on ? 'ON' : 'OFF';
+                btn.classList.toggle('active', on);
+            };
+            renderBtn();
+            btn.addEventListener('click', () => { def.setToggle(!def.getToggle()); renderBtn(); });
+            row.appendChild(btn);
+
+            this._rowRenderers.push(() => { select.value = def.getSelect(); renderBtn(); });
+            this._wireFocus(row, def);
             return row;
         }
 
@@ -534,14 +566,28 @@ class UI {
         };
         updateSensitivity();
 
-        row.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const notch = e.deltaY > 0 ? -1 : 1;
+        const applyStep = (sign) => {
             const magni = def.magni ?? 1;
-            def.set(def.get() + notch * magni * modeMagni[this._rowState.get(def.key)]);
+            def.set(def.get() + sign * magni * modeMagni[this._rowState.get(def.key)]);
             this.sim.rebirth = true;
             renderValue();
+        };
+
+        row.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            applyStep(e.deltaY > 0 ? -1 : 1);
         }, { passive: false });
+
+        // Touch-friendly alternative to wheel-scrolling - same step size and
+        // sensitivity as the wheel (applyStep is shared by both).
+        const plusBtn = document.createElement('button');
+        plusBtn.type = 'button'; plusBtn.className = 'icon-btn step-btn'; plusBtn.textContent = '＋';
+        plusBtn.addEventListener('click', (e) => { e.stopPropagation(); applyStep(1); });
+        const minusBtn = document.createElement('button');
+        minusBtn.type = 'button'; minusBtn.className = 'icon-btn step-btn'; minusBtn.textContent = 'ー';
+        minusBtn.addEventListener('click', (e) => { e.stopPropagation(); applyStep(-1); });
+        row.appendChild(plusBtn);
+        row.appendChild(minusBtn);
 
         row.addEventListener('mousedown', (e) => {
             if (e.button === 1) {
