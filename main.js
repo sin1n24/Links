@@ -206,15 +206,24 @@ window.onload = () => {
         const dt = Math.min(now - lastTime, 100); // clamp large gaps (backgrounded tab) so rotation doesn't jump
         lastTime = now;
 
-        graphics.updateMouseState();
-        graphics.clear();
-        sim.proceed(graphics, dt);
-        ui.update();
+        try {
+            graphics.updateMouseState();
+            graphics.clear();
+            sim.proceed(graphics, dt);
+            ui.update();
 
-        autosaveAccumMs += dt;
-        if (autosaveAccumMs > AUTOSAVE_INTERVAL_MS) {
-            autosaveAccumMs = 0;
-            Config.saveAutosave(sim.saveSceneV2(graphics));
+            autosaveAccumMs += dt;
+            if (autosaveAccumMs > AUTOSAVE_INTERVAL_MS) {
+                autosaveAccumMs = 0;
+                Config.saveAutosave(sim.saveSceneV2(graphics));
+            }
+        } catch (e) {
+            // A single bad frame (e.g. a state combination that trips up a
+            // renderer edge case) shouldn't take down the whole app - without
+            // this, an uncaught exception here stops requestAnimationFrame
+            // from ever being called again, and the page just freezes with
+            // whatever was left on the canvas (see instruction doc §8).
+            console.error('frame error (recovered):', e);
         }
 
         requestAnimationFrame(gameLoop);

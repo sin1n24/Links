@@ -65,6 +65,10 @@ const AnimationCapture = (() => {
      * stopped, restoring the previous state afterward.
      */
     async function recordRegion(canvas, sim, rect, dpr) {
+        if (!window.MediaRecorder) {
+            throw new Error('このブラウザは動画録画(MediaRecorder)に対応していません。');
+        }
+
         const cropCanvas = document.createElement('canvas');
         cropCanvas.width = Math.round(rect.w * dpr);
         cropCanvas.height = Math.round(rect.h * dpr);
@@ -84,45 +88,65 @@ const AnimationCapture = (() => {
         };
         raf = requestAnimationFrame(copyFrame);
 
-        const stream = cropCanvas.captureStream(30);
-        const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
-            .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || 'video/webm';
-        const recorder = new MediaRecorder(stream, { mimeType });
-        const chunks = [];
-        recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+        try {
+            const stream = cropCanvas.captureStream(30);
+            if (!stream) throw new Error('captureStream() が利用できませんでした。');
 
-        const durationMs = Math.max(500, 60000 / sim.roll);
+            const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+                .find((t) => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                throw new Error('このブラウザで再生可能な動画形式(WebM)に対応していません。');
+            }
 
-        const blob = await new Promise((resolve) => {
-            recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
-            recorder.start();
-            setTimeout(() => recorder.stop(), durationMs);
-        });
+            const recorder = new MediaRecorder(stream, { mimeType });
+            const chunks = [];
+            recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
 
-        cancelAnimationFrame(raf);
-        sim.menu.mstop.value = wasRunning;
+            const durationMs = Math.max(500, 60000 / sim.roll);
 
-        return blob;
+            const blob = await new Promise((resolve, reject) => {
+                recorder.onerror = (e) => reject(e.error || new Error('録画中にエラーが発生しました。'));
+                recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+                recorder.start();
+                setTimeout(() => { if (recorder.state !== 'inactive') recorder.stop(); }, durationMs);
+            });
+
+            if (blob.size === 0) {
+                throw new Error('録画データが空でした（キャンバスが非表示/最小化中だった可能性があります）。タブを表示したまま再度お試し下さい。');
+            }
+
+            return blob;
+        } finally {
+            cancelAnimationFrame(raf);
+            sim.menu.mstop.value = wasRunning;
+        }
     }
 
-    /** Full flow: prompt, pick rectangle, record, trigger a download. */
+    /** Full flow: prompt, pick rectangle, record, trigger a single-file download. */
     async function run({ canvas, canvasWrap, selectRectEl, sim, graphics, ui }) {
         ui.log('保存範囲を2回のクリックで示してください。キャンセルはEscキーです。');
         const rect = await pickRectangle(canvasWrap, selectRectEl);
         if (!rect || rect.w < 4 || rect.h < 4) {
-            ui.log('アニメーション出力をキャンセルしました。');
+            ui.log('動画出力をキャンセルしました。');
             return;
         }
         ui.log('録画中… (1回転分)');
         const dpr = window.devicePixelRatio || 1;
-        const blob = await recordRegion(canvas, sim, rect, dpr);
+
+        let blob;
+        try {
+            blob = await recordRegion(canvas, sim, rect, dpr);
+        } catch (e) {
+            ui.log(`動画の録画に失敗しました: ${e.message}`);
+            return;
+        }
 
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'links-animation.webm';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-        ui.log('アニメーションをWebM動画として出力しました。');
+        ui.log(`動画(WebM, ${(blob.size / 1024).toFixed(0)}KB)を出力しました。`);
     }
 
     return { run };

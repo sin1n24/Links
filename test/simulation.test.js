@@ -182,6 +182,47 @@ describe('trace()/sim()/sander() (hecken.h:475-687)', () => {
     });
 });
 
+describe('leg-orbit toggle on a fresh (dxf=true, no DXF loaded) instance - UI overhaul instruction doc §8 regression', () => {
+    // A fresh instance has dxf=true and no DXF part loaded, so `optimized`
+    // stays empty (get() only ever populates it when dxf===false). Toggling
+    // "端部軌道を表示" used to force frontleg_orbit/rearleg_orbit.length up
+    // to resol+1 regardless, leaving every slot `undefined`; the next
+    // pline() call then threw reading `undefined.heel`, and that exception
+    // escaped proceed() and killed the requestAnimationFrame loop for good.
+    it('trace() leaves the orbit arrays empty (not sparse) when optimized has no data', () => {
+        const sim = new Hecken();
+        sim.toggleBothLegOrbits();
+        expect(sim.optimized).toHaveLength(0);
+        sim.trace();
+        expect(sim.frontleg_orbit).toHaveLength(0);
+        expect(sim.rearleg_orbit).toHaveLength(0);
+        expect(sim.frontleg_orbit.every((p) => p !== undefined)).toBe(true);
+        expect(sim.rearleg_orbit.every((p) => p !== undefined)).toBe(true);
+    });
+
+    it('proceed() does not throw with front/rear leg orbits toggled on before any DXF part is loaded', () => {
+        const sim = new Hecken();
+        const g = new FakeGraphics();
+        sim.toggleBothLegOrbits();
+        expect(() => sim.proceed(g, 16)).not.toThrow();
+        expect(() => sim.proceed(g, 16)).not.toThrow(); // a second frame, after rebirth has settled
+    });
+
+    it('toggling the orbit back off and on again still does not throw once real data exists', () => {
+        const sim = new Hecken();
+        const g = new FakeGraphics();
+        sim.toggleBothLegOrbits(); // on, still no data
+        sim.proceed(g, 16);
+        sim.setDxfMode(false); // now optimized gets populated
+        sim.proceed(g, 16);
+        sim.toggleBothLegOrbits(); // off
+        sim.proceed(g, 16);
+        sim.toggleBothLegOrbits(); // on again, with real data this time
+        expect(() => sim.proceed(g, 16)).not.toThrow();
+        expect(sim.frontleg_orbit.length).toBe(sim.resol + 1);
+    });
+});
+
 describe('proceed() rotation timing (instruction doc §3 bug #6 regression)', () => {
     it('advances theta proportionally to elapsed wall-clock time, not per-call', () => {
         const sim = new Hecken();

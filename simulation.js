@@ -174,7 +174,6 @@ class Hecken {
             mstop: { value: false },     // rotation running
             mturn: { value: true },      // true = clockwise (hecken.h round=360 convention)
             mpara: { value: true },      // parameter panel visible
-            mstatus: { value: true },    // help bar visible
             mdxf: { value: true },       // true = show DXF parts, false = show optimized curve
             mdsmode: { value: false },   // dual-slider mode
             mvtmode: { value: false },   // vertical-mode optimization curve
@@ -467,8 +466,18 @@ class Hecken {
             }
         }
         this.orbit.length = this.resol + 1;
-        if (this.exist_frontleg_orbit) this.frontleg_orbit.length = this.resol + 1;
-        if (this.exist_rearleg_orbit) this.rearleg_orbit.length = this.resol + 1;
+        // Guarded by `this.optimized.length` too: if dxf=true and no DXF
+        // part is loaded yet, `optimized` stays empty and the loop above
+        // never wrote into frontleg_orbit/rearleg_orbit at all - forcing
+        // the length here regardless would create a sparse array full of
+        // `undefined` holes, and graphics.js's pline() would throw reading
+        // `undefined.heel` the next time it's drawn. That exception used to
+        // escape proceed() and kill the requestAnimationFrame loop for good
+        // (main.js never recovers without a page reload) - see main.js's
+        // gameLoop() try/catch and graphics.js's pline() guard, which are
+        // the other two layers of this same fix.
+        if (this.exist_frontleg_orbit) this.frontleg_orbit.length = this.optimized.length ? this.resol + 1 : 0;
+        if (this.exist_rearleg_orbit) this.rearleg_orbit.length = this.optimized.length ? this.resol + 1 : 0;
         if (this.exist_secret_orbit) this.secret_orbit.length = this.resol + 1;
     }
 

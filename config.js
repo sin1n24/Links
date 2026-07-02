@@ -12,16 +12,19 @@
 //   - plspan (arc-segmentation precision on DXF read): dxf_io.js delegates
 //     arc sampling to the vendored `dxf` library, which picks its own
 //     angular resolution - see dxf_io.js header.
-// `BGcolor` (background brightness) IS ported, as a real, user-facing
-// setting - the original read it from config.ini but never exposed it
-// through any icon/parameter row, so in practice almost nobody could
-// change it. Exposing it in the UI is a small, deliberate improvement.
+// `BGcolor` (background brightness) originally lived here as its own
+// slider, ported as a real user-facing setting the original never exposed
+// through any icon/parameter row. It's since been folded into a single
+// dark/light mode toggle (`darkMode`) instead of a free-form 0-255 slider,
+// since a canvas-only brightness control disconnected from the rest of the
+// page's theme was more confusing than useful - see ui.js's dark-mode
+// button, which drives both the CSS theme and `sim.bgColor` together.
 
 const Config = (() => {
     const SETTINGS_KEY = 'links-web:config';
     const AUTOSAVE_KEY = 'links-web:autosave-scene';
 
-    const defaults = () => ({ bgColor: 0, hasRunBefore: false });
+    const defaults = () => ({ darkMode: false, hasRunBefore: false });
 
     function load() {
         try {

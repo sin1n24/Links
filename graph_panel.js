@@ -12,6 +12,11 @@
 // The original's function-local `static` variables (persisting once across
 // the whole program's lifetime, since exactly one `hecken` object ever
 // existed) become lazily-initialized instance fields here instead.
+//
+// UI overhaul instruction doc §6: the original only ever plotted one series
+// (hecken.h calls it "速度"/velocity - the tracked point's distance moved
+// per frame, scaled by 100). This adds a second plot of that series'
+// frame-to-frame difference, i.e. acceleration, stacked above it.
 
 (function () {
     const GRAPH_LINE_CAP = 500; // hecken.h:348 `line[500]`
@@ -43,15 +48,19 @@
             this._graphMinLeverAngle = leverAngle;
             this._graphMaxConrodAngle = conrodAngle;
             this._graphMinConrodAngle = conrodAngle;
-            this._graphMaxAcc = 0;
-            this._graphMinAcc = 0;
-            this._graphLine = [];
+            this._graphMaxVel = 0;
+            this._graphMinVel = 0;
+            this._graphVelLine = [];
+            this._graphAccelLine = [];
+            this._graphPrevVel = 0;
         }
 
-        const acc = this._graphOld.dist(trackedNow) * 100;
+        const vel = this._graphOld.dist(trackedNow) * 100;
+        const accel = vel - this._graphPrevVel;
 
         const datam = { x: Math.max(180, g.width - 450), y: Math.max(220, g.height - 100) };
         const color = 'rgb(200,200,200)', maxColor = 'rgb(100,200,100)', minColor = 'rgb(200,100,100)';
+        const velColor = 'rgb(230,230,230)', accelColor = 'rgb(230,200,80)';
 
         if (this._shiftHeld) {
             let shift = -180, dim = 65;
@@ -66,33 +75,47 @@
             g.lineScreen(datam.x - shift, datam.y - dim, datam.x - shift + Math.cos(this._graphMinConrodAngle) * dim, datam.y - dim + Math.sin(this._graphMinConrodAngle) * dim, minColor);
             g.lineScreen(datam.x - shift, datam.y - dim, datam.x - shift + Math.cos(this._graphMaxConrodAngle) * dim, datam.y - dim + Math.sin(this._graphMaxConrodAngle) * dim, maxColor);
 
-            g.lineScreen(datam.x + 400, datam.y - 65 - 65 - 12, datam.x + 400 - acc, datam.y - 65 - 65 - 12, color);
+            g.lineScreen(datam.x + 400, datam.y - 65 - 65 - 12, datam.x + 400 - vel, datam.y - 65 - 65 - 12, color);
 
-            g.textScreen(datam.x, datam.y + 10, color, `速度 = Now[${acc.toFixed(2)}] Max[${this._graphMaxAcc.toFixed(2)}] Min[${this._graphMinAcc.toFixed(2)}]`);
+            g.textScreen(datam.x, datam.y + 10, color, `速度 = Now[${vel.toFixed(2)}] Max[${this._graphMaxVel.toFixed(2)}] Min[${this._graphMinVel.toFixed(2)}]`);
             g.textScreen(datam.x, datam.y + 30, color, `レバー角度 = Band[${deg(this._graphMaxLeverAngle - this._graphMinLeverAngle).toFixed(2)}] Max[${deg(this._graphMaxLeverAngle).toFixed(2)}] Min[${deg(this._graphMinLeverAngle).toFixed(2)}]`);
             g.textScreen(datam.x, datam.y + 50, color, `コンロッド角度 = Band[${deg(this._graphMaxConrodAngle - this._graphMinConrodAngle).toFixed(2)}] Max[${deg(this._graphMaxConrodAngle).toFixed(2)}] Min[${deg(this._graphMinConrodAngle).toFixed(2)}]`);
             g.textScreen(datam.x, datam.y + 70, color, `最適化曲線 端部振上げ高さ = 後[${(this.height - this.min_reartleg_orbit).toFixed(2)}] 前[${(this.height - this.min_frontleg_orbit).toFixed(2)}]`);
         }
 
-        if (this._graphI < this.resol && this._graphI < GRAPH_LINE_CAP - 1) this._graphLine[this._graphI++] = acc;
-        else this._graphI = 0;
-        for (let k = 0; k <= this._graphI - 2; k++) {
-            g.lineScreen(k * 2, datam.y - 200 + this._graphLine[k], k * 2 + 2, datam.y - 200 + this._graphLine[k + 1], color);
+        if (this._graphI < this.resol && this._graphI < GRAPH_LINE_CAP - 1) {
+            this._graphVelLine[this._graphI] = vel;
+            this._graphAccelLine[this._graphI] = accel;
+            this._graphI++;
+        } else {
+            this._graphI = 0;
         }
+
+        // Two stacked plots: velocity below, acceleration above it, each
+        // with its own label so they're distinguishable at a glance.
+        const velBaseY = datam.y - 200;
+        const accelBaseY = datam.y - 330;
+        for (let k = 0; k <= this._graphI - 2; k++) {
+            g.lineScreen(k * 2, velBaseY + this._graphVelLine[k], k * 2 + 2, velBaseY + this._graphVelLine[k + 1], velColor);
+            g.lineScreen(k * 2, accelBaseY + this._graphAccelLine[k], k * 2 + 2, accelBaseY + this._graphAccelLine[k + 1], accelColor);
+        }
+        g.textScreen(0, velBaseY - 100, velColor, '速度');
+        g.textScreen(0, accelBaseY - 100, accelColor, '加速度');
 
         if (!this.menu.mstop.value) {
             this._graphMaxLeverAngle = this._graphMinLeverAngle = leverAngle;
             this._graphMaxConrodAngle = this._graphMinConrodAngle = conrodAngle;
-            this._graphMaxAcc = this._graphMinAcc = acc;
+            this._graphMaxVel = this._graphMinVel = vel;
             this._graphI = 0;
         }
         if (this._graphMaxLeverAngle < leverAngle) this._graphMaxLeverAngle = leverAngle;
         if (this._graphMinLeverAngle > leverAngle) this._graphMinLeverAngle = leverAngle;
         if (this._graphMaxConrodAngle < conrodAngle) this._graphMaxConrodAngle = conrodAngle;
         if (this._graphMinConrodAngle > conrodAngle) this._graphMinConrodAngle = conrodAngle;
-        if (this._graphMaxAcc < acc) this._graphMaxAcc = acc;
-        if (this._graphMinAcc > acc) this._graphMinAcc = acc;
+        if (this._graphMaxVel < vel) this._graphMaxVel = vel;
+        if (this._graphMinVel > vel) this._graphMinVel = vel;
 
+        this._graphPrevVel = vel;
         this._graphOld = currentTrackedPoint(this).clone();
     };
 })();

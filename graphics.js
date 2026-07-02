@@ -11,6 +11,12 @@ class Graphics {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.scale = 3.0;
+        // Placeholder only - a <canvas> with no width/height attribute (ours
+        // is sized by CSS/aspect-ratio) defaults to the browser's built-in
+        // 300x150 before any layout happens, so centering on canvas.width/
+        // height here put the origin near the top-left corner of the real,
+        // much larger drawing surface. _setupResize() below measures the
+        // actual CSS size synchronously and recenters once, immediately.
         this.center = new Point(canvas.width / 2, canvas.height / 2);
         this.backgroundColor = '#1e1e1e';
         this.wheelbtn = true; // middle-mouse drag pan, matches draw.centerDrag(true) in main.cpp
@@ -75,6 +81,11 @@ class Graphics {
             this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         };
         applyDpr();
+        // One-time recenter now that the real CSS size is known (see the
+        // constructor's placeholder comment). Later resizes intentionally
+        // don't recenter - that would yank the view out from under a user
+        // who has already panned.
+        this.center = new Point(this.width / 2, this.height / 2);
         window.addEventListener('resize', applyDpr);
         this._applyDpr = applyDpr;
     }
@@ -181,7 +192,12 @@ class Graphics {
     // datatypes.js header comment).
     pline(points, color) {
         for (let i = 0; i < points.length - 1; i++) {
-            if (points[i].heel) this.line(points[i], points[i + 1], color);
+            // Defends against a sparse array with holes (e.g. `.length` set
+            // past the last real element) - see simulation.js trace()'s
+            // frontleg_orbit/rearleg_orbit guard for where that used to
+            // happen and take the whole render loop down with it.
+            if (!points[i]) continue;
+            if (points[i].heel) { if (points[i + 1]) this.line(points[i], points[i + 1], color); }
             else this.dot(points[i], color);
         }
     }
