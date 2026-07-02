@@ -75,6 +75,7 @@
         .param-row select { flex: 0 0 auto; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 3px; font-size: 12px; }
         .param-row.readonly { cursor: default; }
         .param-row.readonly .value-chip { opacity: 0.65; }
+        .param-row .step-btn { padding: 1px 7px; font-size: 13px; line-height: 1.4; flex: none; }
         .param-row.graph-toggle-row { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; }
 
         #modal-overlay {
@@ -86,6 +87,10 @@
         #modal-buttons { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 
         input[type=file] { display: none; }
+
+        #site-footer { flex-basis: 100%; text-align: center; padding: 6px 0 0; }
+        #site-footer a { color: var(--muted); text-decoration: none; font-size: 12px; }
+        #site-footer a:hover { color: var(--accent); text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -106,6 +111,10 @@
             <div id="param-panel"></div>
         </div>
     </div>
+
+    <footer id="site-footer">
+        <a href="https://sin1.studio/" target="_blank" rel="noopener">🏠 sin1.studio トップページへ</a>
+    </footer>
 
     <input type="file" id="file-input" accept=".links,.json,text/plain">
     <input type="file" id="dxf-file-input" accept=".dxf">
