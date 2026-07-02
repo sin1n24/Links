@@ -1,0 +1,11 @@
+{
+  "name": "links-web",
+  "private": true,
+  "description": "Web port of Links (linkage-mechanism simulator) - static site, no build step. package.json exists only to pin the dev-time test runner.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}

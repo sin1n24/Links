@@ -1,28 +1,40 @@
 // Links Web - Graphics Engine
+//
+// Ported from Common/graphic.h (world-space drawing with pan/zoom) plus the
+// "raw screen space" DrawLine/DrawCircle/DrawFormatString calls that
+// Links/hecken.h uses directly (bypassing the graphic class) for the graph
+// panel and help bar (hecken.h:340-467). Those are exposed here as the
+// *Screen() methods so simulation.js can mirror the original 1:1.
 
 class Graphics {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.scale = 3.0; // Start with a reasonable scale
+        this.scale = 3.0;
         this.center = new Point(canvas.width / 2, canvas.height / 2);
-        this.backgroundColor = '#333333';
-        this.wheelbtn = true; // For middle-mouse drag panning
+        this.backgroundColor = '#1e1e1e';
+        this.wheelbtn = true; // middle-mouse drag pan, matches draw.centerDrag(true) in main.cpp
 
-        // Mouse state, mimicking the C++ version
+        // Mouse state, mirroring Common/graphic.h's graphic class fields.
         this.mouse = {
-            vir: new Point(),    // virtual coordinates
-            real: new Point(),   // real screen coordinates
-            L: false, C: false, R: false, // Button released this frame
-            l: false, c: false, r: false, // Button is currently down
-            w: 0,                        // wheel rotation (-1, 0, or 1)
-            lastReal: new Point() // For dragging
+            vir: new Point(),   // world-space cursor position
+            real: new Point(),  // screen-space (canvas pixel) cursor position
+            l: false, c: false, r: false,   // currently held
+            L: false, C: false, R: false,   // released this frame
+            w: 0,                            // -1/0/1 wheel notch this frame
         };
 
-        this.setupMouseHandlers();
+        this._dragging = false;
+        this._lastReal = new Point();
+        this._resizeObserver = null;
+
+        this._setupPointerHandlers();
+        this._setupResize();
     }
 
-    // Called once per frame to reset single-frame flags
+    // --- frame bookkeeping -------------------------------------------------
+
+    /** Reset one-frame flags; call once per animation frame before input is read. */
     updateMouseState() {
         this.mouse.L = false;
         this.mouse.C = false;
@@ -30,42 +42,71 @@ class Graphics {
         this.mouse.w = 0;
     }
 
-    _toScreen(p) {
-        return new Point(
-            this.center.x + p.x * this.scale,
-            this.center.y + p.y * this.scale
-        );
+    setScale(s) { this.scale = s; }
+    getScale() { return this.scale; }
+    setCenter(p) { this.center = p; }
+    getCenter() { return this.center; }
+
+    // --- coordinate transforms ---------------------------------------------
+
+    toScreen(p) {
+        return new Point(this.center.x + p.x * this.scale, this.center.y + p.y * this.scale);
     }
 
-    _toVirtual(p) {
-         return new Point(
-            (p.x - this.center.x) / this.scale,
-            (p.y - this.center.y) / this.scale
-        );
+    toVirtual(p) {
+        return new Point((p.x - this.center.x) / this.scale, (p.y - this.center.y) / this.scale);
     }
 
-    setupMouseHandlers() {
-        this.canvas.addEventListener('mousemove', (e) => {
-            const rect = this.canvas.getBoundingClientRect();
+    // --- input ---------------------------------------------------------------
+
+    _setupResize() {
+        // High-DPI backing store: keep canvas.width/height as CSS pixels for
+        // all the drawing math above, but render crisply on retina displays.
+        const applyDpr = () => {
+            const dpr = window.devicePixelRatio || 1;
+            const cssW = this.canvas.clientWidth || this.canvas.width;
+            const cssH = this.canvas.clientHeight || this.canvas.height;
+            if (this._cssW === cssW && this._cssH === cssH && this._dpr === dpr) return;
+            this._cssW = cssW; this._cssH = cssH; this._dpr = dpr;
+            this.canvas.width = Math.round(cssW * dpr);
+            this.canvas.height = Math.round(cssH * dpr);
+            this.canvas.style.width = cssW + 'px';
+            this.canvas.style.height = cssH + 'px';
+            this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        };
+        applyDpr();
+        window.addEventListener('resize', applyDpr);
+        this._applyDpr = applyDpr;
+    }
+
+    /** CSS-pixel width/height (i.e. the logical drawing surface size). */
+    get width() { return this._cssW || this.canvas.width; }
+    get height() { return this._cssH || this.canvas.height; }
+
+    _setupPointerHandlers() {
+        const rectOf = () => this.canvas.getBoundingClientRect();
+
+        this.canvas.addEventListener('pointermove', (e) => {
+            const rect = rectOf();
             this.mouse.real.x = e.clientX - rect.left;
             this.mouse.real.y = e.clientY - rect.top;
-            this.mouse.vir = this._toVirtual(this.mouse.real);
+            this.mouse.vir = this.toVirtual(this.mouse.real);
 
-            // Pan with middle mouse button
             if (this.wheelbtn && this.mouse.c) {
-                const diff = this.mouse.real.subtract(this.mouse.lastReal);
+                const diff = this.mouse.real.subtract(this._lastReal);
                 this.center = this.center.add(diff);
             }
-            this.mouse.lastReal = this.mouse.real.clone();
+            this._lastReal = this.mouse.real.clone();
         });
 
-        this.canvas.addEventListener('mousedown', (e) => {
+        this.canvas.addEventListener('pointerdown', (e) => {
             if (e.button === 0) this.mouse.l = true;
-            if (e.button === 1) this.mouse.c = true;
+            if (e.button === 1) { this.mouse.c = true; e.preventDefault(); }
             if (e.button === 2) this.mouse.r = true;
+            this.canvas.setPointerCapture(e.pointerId);
         });
 
-        this.canvas.addEventListener('mouseup', (e) => {
+        this.canvas.addEventListener('pointerup', (e) => {
             if (e.button === 0) { this.mouse.l = false; this.mouse.L = true; }
             if (e.button === 1) { this.mouse.c = false; this.mouse.C = true; }
             if (e.button === 2) { this.mouse.r = false; this.mouse.R = true; }
@@ -73,29 +114,34 @@ class Graphics {
 
         this.canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
-            this.mouse.w = e.deltaY > 0 ? -1 : 1;
-            // Zoom centered on the mouse cursor
-            const oldVir = this.mouse.vir.clone();
-            this.scale *= (1 + this.mouse.w * 0.1);
-            if (this.scale < 0.1) this.scale = 0.1;
-            const newVir = this._toVirtual(this.mouse.real);
-            this.center = this.center.add(newVir.subtract(oldVir).multiply(this.scale));
-        });
+            const notch = e.deltaY > 0 ? -1 : 1;
+            this.mouse.w = notch;
 
-        // Prevent right-click context menu on canvas
+            // Zoom centered on the cursor: keep the world point under the
+            // cursor fixed on screen while scale changes.
+            const before = this.toVirtual(this.mouse.real);
+            this.scale *= (1 + notch * 0.1);
+            if (this.scale < 0.1) this.scale = 0.1;
+            const after = this.toVirtual(this.mouse.real);
+            this.center = this.center.add(after.subtract(before).multiply(this.scale));
+        }, { passive: false });
+
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
+    // --- world-space drawing (Common/graphic.h) -----------------------------
+
     clear() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+        this.ctx.setTransform(this._dpr || 1, 0, 0, this._dpr || 1, 0, 0);
+        this.ctx.clearRect(0, 0, this.width, this.height);
         this.ctx.fillStyle = this.backgroundColor;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        this.ctx.restore();
     }
 
     line(p1, p2, color) {
-        const s1 = this._toScreen(p1);
-        const s2 = this._toScreen(p2);
-
+        const s1 = this.toScreen(p1), s2 = this.toScreen(p2);
         this.ctx.beginPath();
         this.ctx.moveTo(s1.x, s1.y);
         this.ctx.lineTo(s2.x, s2.y);
@@ -103,74 +149,89 @@ class Graphics {
         this.ctx.stroke();
     }
 
-    circle(p, radius, color, filled = false) {
-        const s = this._toScreen(p);
-        const r = radius * this.scale;
+    dot(p, color) {
+        const s = this.toScreen(p);
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(s.x, s.y, 1, 1);
+    }
 
+    circle(p, r, color, filled = false) {
+        const s = this.toScreen(p);
         this.ctx.beginPath();
-        this.ctx.arc(s.x, s.y, r, 0, 2 * Math.PI);
-        if (filled) {
-            this.ctx.fillStyle = color;
-            this.ctx.fill();
-        } else {
-            this.ctx.strokeStyle = color;
-            this.ctx.stroke();
-        }
+        this.ctx.arc(s.x, s.y, Math.max(0, r * this.scale), 0, 2 * Math.PI);
+        if (filled) { this.ctx.fillStyle = color; this.ctx.fill(); }
+        else { this.ctx.strokeStyle = color; this.ctx.stroke(); }
     }
 
     rect(p1, p2, color, filled = false) {
-        const s1 = this._toScreen(p1);
-        const s2 = this._toScreen(p2);
+        const s1 = this.toScreen(p1), s2 = this.toScreen(p2);
+        if (filled) { this.ctx.fillStyle = color; this.ctx.fillRect(s1.x, s1.y, s2.x - s1.x, s2.y - s1.y); }
+        else { this.ctx.strokeStyle = color; this.ctx.strokeRect(s1.x, s1.y, s2.x - s1.x, s2.y - s1.y); }
+    }
 
-        if (filled) {
-            this.ctx.fillStyle = color;
-            this.ctx.fillRect(s1.x, s1.y, s2.x - s1.x, s2.y - s1.y);
-        } else {
-            this.ctx.strokeStyle = color;
-            this.ctx.strokeRect(s1.x, s1.y, s2.x - s1.x, s2.y - s1.y);
+    // graphic::rectc(a, b, color, filled) - box centered on `a` with half-size `b`
+    rectc(a, b, color, filled = false) {
+        const bx = (b instanceof Point) ? b.x : b;
+        const by = (b instanceof Point) ? b.y : b;
+        this.rect(new Point(a.x - bx, a.y - by), new Point(2 * bx, 2 * by), color, filled);
+    }
+
+    // pline: draws a polyline honoring per-point `.heel` breaks. No terminal
+    // sentinel is needed since JS arrays carry their own length (see
+    // datatypes.js header comment).
+    pline(points, color) {
+        for (let i = 0; i < points.length - 1; i++) {
+            if (points[i].heel) this.line(points[i], points[i + 1], color);
+            else this.dot(points[i], color);
         }
     }
 
-    pline(points, color) {
-        if (points.length < 2) return;
+    pcircle(cyclos, color) {
+        for (const c of cyclos) this.circle(c.pos, c.r, color, false);
+    }
 
+    // --- screen-space drawing (raw DrawXxx calls in hecken.h, unaffected by
+    // pan/zoom - used for the graph panel and the help/status bar). ---------
+
+    lineScreen(x1, y1, x2, y2, color) {
         this.ctx.beginPath();
-        let firstPoint = true;
-
-        for (let i = 0; i < points.length - 1; i++) {
-            if (points[i].equals(points[i+1])) {
-                // End of a segment in the original code
-                this.ctx.strokeStyle = color;
-                this.ctx.stroke();
-                this.ctx.beginPath();
-                firstPoint = true;
-                continue;
-            }
-
-            if (points[i].heel) {
-                 if (firstPoint) {
-                    const s = this._toScreen(points[i]);
-                    this.ctx.moveTo(s.x, s.y);
-                    firstPoint = false;
-                }
-                const s2 = this._toScreen(points[i+1]);
-                this.ctx.lineTo(s2.x, s2.y);
-            } else {
-                // Not a continuous line, end current path and start new one
-                this.ctx.strokeStyle = color;
-                this.ctx.stroke();
-                this.ctx.beginPath();
-                firstPoint = true;
-            }
-        }
+        this.ctx.moveTo(x1, y1);
+        this.ctx.lineTo(x2, y2);
         this.ctx.strokeStyle = color;
         this.ctx.stroke();
     }
 
-    pcircle(cyclos, color) {
-        for (const c of cyclos) {
-            if (c.r === 0) break;
-            this.circle(c.pos, c.r, color, false);
-        }
+    circleScreen(x, y, r, color, filled = false) {
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, Math.max(0, r), 0, 2 * Math.PI);
+        if (filled) { this.ctx.fillStyle = color; this.ctx.fill(); }
+        else { this.ctx.strokeStyle = color; this.ctx.stroke(); }
     }
+
+    boxScreen(x1, y1, x2, y2, color, filled = false) {
+        if (filled) { this.ctx.fillStyle = color; this.ctx.fillRect(x1, y1, x2 - x1, y2 - y1); }
+        else { this.ctx.strokeStyle = color; this.ctx.strokeRect(x1, y1, x2 - x1, y2 - y1); }
+    }
+
+    textScreen(x, y, color, text, font = '13px sans-serif') {
+        this.ctx.fillStyle = color;
+        this.ctx.font = font;
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText(text, x, y);
+    }
+}
+
+/** hecken.h's 60-entry rainbow palette (hecken::hecken ctor, hecken.h:1319-1327). */
+function buildColorPalette() {
+    const colors = new Array(60);
+    const x = 25;
+    for (let i = 0; i < 10; i++) {
+        colors[0 + i] = `rgb(${255 - 9 * x}, ${255 + (i - 9) * x}, 255)`;
+        colors[10 + i] = `rgb(${255 - 9 * x}, 255, ${255 - i * x})`;
+        colors[20 + i] = `rgb(${255 + (i - 9) * x}, 255, ${255 - 9 * x})`;
+        colors[30 + i] = `rgb(255, ${255 - i * x}, ${255 - 9 * x})`;
+        colors[40 + i] = `rgb(255, ${255 - 9 * x}, ${255 + (i - 9) * x})`;
+        colors[50 + i] = `rgb(${255 - i * x}, ${255 - 9 * x}, 255)`;
+    }
+    return colors;
 }
