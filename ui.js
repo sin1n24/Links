@@ -620,10 +620,20 @@ class UI {
             }
         });
 
-        row.addEventListener('dblclick', () => {
+        row.addEventListener('dblclick', (e) => {
+            // Only the value chip itself opens direct numeric entry - a
+            // double-click/double-tap landing on the sensitivity dots or
+            // the +/- stepper buttons should just do what those controls
+            // normally do (cycle sensitivity / step the value) twice, not
+            // also pop open a text box.
+            if (e.target !== chip) return;
             const input = document.createElement('input');
-            input.type = 'number';
-            input.step = 'any';
+            // Plain text, not type=number - a native number input's built-in
+            // up/down spinner would just duplicate the +/- stepper buttons
+            // right next to it and look cluttered. `inputmode` still hints
+            // mobile keyboards to show a numeric layout.
+            input.type = 'text';
+            input.inputMode = 'decimal';
             input.value = def.get();
             chip.replaceWith(input);
             input.focus();
