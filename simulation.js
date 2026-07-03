@@ -210,6 +210,16 @@ class Hecken {
         return this.bgColor > 128 ? 'rgb(200,200,200)' : 'rgb(50,50,50)';
     }
 
+    /**
+     * Parameter-hover highlight color (hecken.h's hardcoded white `focuced`,
+     * hecken.h:253 etc). The original always drew on a near-black canvas so
+     * white always had contrast; this port supports a light background too,
+     * so the highlight flips to black there instead of disappearing.
+     */
+    focusedColor() {
+        return this.bgColor > 128 ? 'rgb(0,0,0)' : 'rgb(255,255,255)';
+    }
+
     // --- hecken::correct(), hecken.h:916-932 --------------------------------
     // Called once per frame from proceed(). `g` is passed in so the display
     // scale (owned by Graphics, see file header) can be clamped alongside
@@ -343,7 +353,7 @@ class Hecken {
 
     // --- hecken::draw(), hecken.h:251-291 ------------------------------------
     draw(g, color, gray) {
-        const focused = '#ffffff';
+        const focused = this.focusedColor();
         const f = this.focus;
 
         g.line(this.crank, this.crankjoint, f.crankr ? focused : (this.dxfcrank ? gray : color));
@@ -398,7 +408,7 @@ class Hecken {
             this.ground = new Point(0, 0);
 
             if (this.menu.mpara.value) {
-                const focused = '#ffffff';
+                const focused = this.focusedColor();
                 // hecken.h:325-326 also highlights `crank` via tcrankx/
                 // tcranky, but those table rows are never initialized in
                 // initInterface (crank position isn't user-editable - see

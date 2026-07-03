@@ -7,89 +7,30 @@
 // submission requirement and that "animated GIFs are now banned in
 // competition anyway, so there's probably no demand for this" - given that
 // admission, this port swaps the bitmap-sequence + external-tool workflow
-// for a single WebM file recorded directly in the browser (MediaRecorder),
-// which needs no extra dependency and no external assembly step. The
-// two-click rectangle selection gesture itself is kept as-is.
+// for a single WebM file recorded directly from the canvas (MediaRecorder).
+//
+// The original's two-click rectangle selection is dropped in favor of just
+// recording the canvas as currently drawn (no separate crop step, no crop
+// canvas or per-frame copy loop needed) - simpler, and the user can already
+// pan/zoom the view to frame whatever they want before recording.
 
 const AnimationCapture = (() => {
-    function normalizeRect(a, b) {
-        return {
-            x: Math.min(a.x, b.x), y: Math.min(a.y, b.y),
-            w: Math.max(1, Math.abs(a.x - b.x)), h: Math.max(1, Math.abs(a.y - b.y)),
-        };
-    }
-
-    /** Two-click rectangle picker over `container` (CSS pixel space), Escape cancels. */
-    function pickRectangle(container, rectEl) {
-        return new Promise((resolve) => {
-            let p1 = null;
-
-            const toLocal = (e) => {
-                const r = container.getBoundingClientRect();
-                return { x: e.clientX - r.left, y: e.clientY - r.top };
-            };
-            const onDown = (e) => {
-                const p = toLocal(e);
-                if (!p1) {
-                    p1 = p;
-                    rectEl.style.display = 'block';
-                    Object.assign(rectEl.style, { left: `${p.x}px`, top: `${p.y}px`, width: '0px', height: '0px' });
-                } else {
-                    const rect = normalizeRect(p1, p);
-                    cleanup();
-                    resolve(rect);
-                }
-            };
-            const onMove = (e) => {
-                if (!p1) return;
-                const norm = normalizeRect(p1, toLocal(e));
-                Object.assign(rectEl.style, { left: `${norm.x}px`, top: `${norm.y}px`, width: `${norm.w}px`, height: `${norm.h}px` });
-            };
-            const onKey = (e) => { if (e.key === 'Escape') { cleanup(); resolve(null); } };
-            function cleanup() {
-                container.removeEventListener('pointerdown', onDown);
-                container.removeEventListener('pointermove', onMove);
-                window.removeEventListener('keydown', onKey);
-                rectEl.style.display = 'none';
-            }
-            container.addEventListener('pointerdown', onDown);
-            container.addEventListener('pointermove', onMove);
-            window.addEventListener('keydown', onKey);
-        });
-    }
-
     /**
      * Records exactly one revolution (60000/roll ms, matching the resol
-     * frames-per-revolution the original sampled) of the selected canvas
-     * region to a WebM blob. Temporarily forces rotation on if it was
-     * stopped, restoring the previous state afterward.
+     * frames-per-revolution the original sampled) of the canvas exactly as
+     * currently drawn/framed to a WebM blob. Temporarily forces rotation on
+     * if it was stopped, restoring the previous state afterward.
      */
-    async function recordRegion(canvas, sim, rect, dpr) {
+    async function recordCanvas(canvas, sim) {
         if (!window.MediaRecorder) {
             throw new Error('このブラウザは動画録画(MediaRecorder)に対応していません。');
         }
 
-        const cropCanvas = document.createElement('canvas');
-        cropCanvas.width = Math.round(rect.w * dpr);
-        cropCanvas.height = Math.round(rect.h * dpr);
-        const cropCtx = cropCanvas.getContext('2d');
-
         const wasRunning = sim.menu.mstop.value;
         sim.menu.mstop.value = true;
 
-        let raf;
-        const copyFrame = () => {
-            cropCtx.drawImage(
-                canvas,
-                Math.round(rect.x * dpr), Math.round(rect.y * dpr), Math.round(rect.w * dpr), Math.round(rect.h * dpr),
-                0, 0, cropCanvas.width, cropCanvas.height
-            );
-            raf = requestAnimationFrame(copyFrame);
-        };
-        raf = requestAnimationFrame(copyFrame);
-
         try {
-            const stream = cropCanvas.captureStream(30);
+            const stream = canvas.captureStream(30);
             if (!stream) throw new Error('captureStream() が利用できませんでした。');
 
             const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
@@ -112,30 +53,22 @@ const AnimationCapture = (() => {
             });
 
             if (blob.size === 0) {
-                throw new Error('録画データが空でした（キャンバスが非表示/最小化中だった可能性があります）。タブを表示したまま再度お試し下さい。');
+                throw new Error('録画データが空でした（タブが非表示/最小化中だった可能性があります）。タブを表示したまま再度お試し下さい。');
             }
 
             return blob;
         } finally {
-            cancelAnimationFrame(raf);
             sim.menu.mstop.value = wasRunning;
         }
     }
 
-    /** Full flow: prompt, pick rectangle, record, trigger a single-file download. */
-    async function run({ canvas, canvasWrap, selectRectEl, sim, graphics, ui }) {
-        ui.log('保存範囲を2回のクリックで示してください。キャンセルはEscキーです。');
-        const rect = await pickRectangle(canvasWrap, selectRectEl);
-        if (!rect || rect.w < 4 || rect.h < 4) {
-            ui.log('動画出力をキャンセルしました。');
-            return;
-        }
+    /** Full flow: record the current canvas, trigger a single-file download. */
+    async function run({ canvas, sim, ui }) {
         ui.log('録画中… (1回転分)');
-        const dpr = window.devicePixelRatio || 1;
 
         let blob;
         try {
-            blob = await recordRegion(canvas, sim, rect, dpr);
+            blob = await recordCanvas(canvas, sim);
         } catch (e) {
             ui.log(`動画の録画に失敗しました: ${e.message}`);
             return;

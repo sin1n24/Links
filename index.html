@@ -32,20 +32,25 @@
         #main-column { display: flex; flex-direction: column; gap: 8px; flex: 1 1 640px; min-width: 320px; max-width: 900px; }
         #canvas-wrap { position: relative; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: var(--canvas-fallback); aspect-ratio: 4 / 3; }
         #main-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
-        #select-rect { position: absolute; border: 1px dashed #fff; background: rgba(255,255,255,0.15); pointer-events: none; display: none; }
 
         #toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
         #hidden-mode-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
         #hidden-mode-row.hidden { display: none; }
         #hidden-mode-row .icon-btn { font-size: 11px; }
 
+        /* Buttons intentionally do NOT follow the light/dark theme vars
+           above - same fixed dark-gray/outline/blue look in both modes, so
+           the toolbar doesn't get harder to read against a light page. */
         .icon-btn {
-            background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 4px;
+            background: #333333; color: #e8e8e8; border: 1px solid #3a3a3a; border-radius: 4px;
             padding: 5px 9px; cursor: pointer; font-size: 13px; line-height: 1.2; white-space: nowrap;
             display: inline-flex; align-items: center; gap: 6px;
         }
-        .icon-btn:hover { background: var(--surface-hover); }
-        .icon-btn.active { background: var(--accent); color: #ffffff; border-color: var(--accent); }
+        .icon-btn:hover { background: #4ea1ff; color: #08243d; }
+        .icon-btn.active { border: 2px solid #4ea1ff; padding: 4px 8px; }
+        .icon-btn.active:hover { background: #4ea1ff; color: #08243d; }
+        .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .icon-btn:disabled:hover { background: #333333; color: #e8e8e8; }
         .icon-btn .icon-img { width: 20px; height: 20px; image-rendering: pixelated; flex: none; }
         .icon-btn .icon-emoji { display: inline-flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1; }
         .icon-btn .icon-label { white-space: nowrap; }
@@ -67,7 +72,7 @@
         .param-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; padding: 3px 4px; border-radius: 3px; cursor: ns-resize; user-select: none; }
         .param-row:hover { background: var(--surface-hover); }
         .param-row label { flex: 1 1 auto; font-size: 12px; }
-        .param-row .sensitivity { display: flex; gap: 1px; width: 12px; }
+        .param-row .sensitivity { display: flex; gap: 1px; width: 12px; cursor: pointer; }
         .param-row .sensitivity i { flex: 1; height: 10px; background: var(--border); border-radius: 1px; }
         .param-row .sensitivity i.on { background: var(--accent); }
         .param-row .value-chip { min-width: 68px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; padding: 1px 4px; border-radius: 3px; background: var(--input-bg); border: 1px solid var(--border); }
@@ -99,7 +104,6 @@
         <div id="hidden-mode-row"></div>
         <div id="canvas-wrap">
             <canvas id="main-canvas"></canvas>
-            <div id="select-rect"></div>
         </div>
         <div id="help-bar" class="persistent"></div>
         <div id="log-container"></div>
