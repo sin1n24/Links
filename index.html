@@ -42,15 +42,15 @@
            above - same fixed dark-gray/outline/blue look in both modes, so
            the toolbar doesn't get harder to read against a light page. */
         .icon-btn {
-            background: #333333; color: #e8e8e8; border: 1px solid #3a3a3a; border-radius: 4px;
+            background: #545454; color: #f0f0f0; border: 1px solid #666666; border-radius: 4px;
             padding: 5px 9px; cursor: pointer; font-size: 13px; line-height: 1.2; white-space: nowrap;
             display: inline-flex; align-items: center; gap: 6px;
         }
         .icon-btn:hover { background: #4ea1ff; color: #08243d; }
-        .icon-btn.active { border: 2px solid #4ea1ff; padding: 4px 8px; }
+        .icon-btn.active { border: 3px solid #4ea1ff; padding: 3px 7px; }
         .icon-btn.active:hover { background: #4ea1ff; color: #08243d; }
         .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .icon-btn:disabled:hover { background: #333333; color: #e8e8e8; }
+        .icon-btn:disabled:hover { background: #545454; color: #f0f0f0; }
         .icon-btn .icon-img { width: 20px; height: 20px; image-rendering: pixelated; flex: none; }
         .icon-btn .icon-emoji { display: inline-flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1; }
         .icon-btn .icon-label { white-space: nowrap; }
@@ -76,7 +76,7 @@
         .param-row .sensitivity i { flex: 1; height: 10px; background: var(--border); border-radius: 1px; }
         .param-row .sensitivity i.on { background: var(--accent); }
         .param-row .value-chip { min-width: 68px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; padding: 1px 4px; border-radius: 3px; background: var(--input-bg); border: 1px solid var(--border); }
-        .param-row input[type=number] { width: 68px; background: var(--input-bg); color: var(--text); border: 1px solid var(--accent); border-radius: 3px; padding: 1px 4px; font-size: 12px; }
+        .param-row input[type=text] { width: 68px; background: var(--input-bg); color: var(--text); border: 1px solid var(--accent); border-radius: 3px; padding: 1px 4px; font-size: 12px; text-align: right; }
         .param-row select { flex: 0 0 auto; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 3px; font-size: 12px; }
         .param-row.readonly { cursor: default; }
         .param-row.readonly .value-chip { opacity: 0.65; }
@@ -93,9 +93,13 @@
 
         input[type=file] { display: none; }
 
-        #site-footer { flex-basis: 100%; text-align: center; padding: 6px 0 0; }
-        #site-footer a { color: var(--muted); text-decoration: none; font-size: 12px; }
-        #site-footer a:hover { color: var(--accent); text-decoration: underline; }
+        #site-footer { flex-basis: 100%; text-align: center; padding: 8px 0 2px; }
+        #site-footer a { display: inline-block; opacity: 0.8; }
+        #site-footer a:hover { opacity: 1; }
+        #site-footer .footer-logo { height: 26px; width: auto; display: block; }
+        #site-footer .footer-logo-dark { display: none; }
+        body.dark #site-footer .footer-logo-light { display: none; }
+        body.dark #site-footer .footer-logo-dark { display: block; }
     </style>
 </head>
 <body>
@@ -117,7 +121,10 @@
     </div>
 
     <footer id="site-footer">
-        <a href="https://sin1.studio/" target="_blank" rel="noopener">🏠 sin1.studio トップページへ</a>
+        <a href="https://sin1.studio/" target="_blank" rel="noopener" aria-label="sin1.studio トップページへ">
+            <img class="footer-logo footer-logo-light" src="sss_logo.png" alt="sin1's studio">
+            <img class="footer-logo footer-logo-dark" src="sss_logo_white.png" alt="sin1's studio">
+        </a>
     </footer>
 
     <input type="file" id="file-input" accept=".links,.json,text/plain">
