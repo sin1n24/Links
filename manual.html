@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>取扱説明書 - Links Web β</title>
+<link rel="icon" href="favicon.ico">
+<style>
+    :root {
+        --bg: #f2f2f5; --panel: #ffffff; --border: #d7d7dc; --text: #1c1c1e; --accent: #2f6fd1; --muted: #666666;
+    }
+    * { box-sizing: border-box; }
+    body {
+        font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+        background: var(--bg); color: var(--text); margin: 0; padding: 20px 14px 60px;
+        line-height: 1.8;
+    }
+    #manual { max-width: 760px; margin: 0 auto; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 28px 32px; }
+    h1 { font-size: 1.6em; margin: 0 0 4px; }
+    h2 { font-size: 1.25em; margin: 2.2em 0 0.6em; padding-bottom: 4px; border-bottom: 2px solid var(--border); }
+    h3 { font-size: 1.05em; margin: 1.4em 0 0.4em; color: var(--accent); }
+    p { margin: 0.6em 0; }
+    ul, ol { margin: 0.6em 0; padding-left: 1.4em; }
+    li { margin: 0.3em 0; }
+    code { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 0.1em 0.4em; font-size: 0.92em; }
+    .lead { color: var(--muted); font-size: 0.95em; }
+    a { color: var(--accent); }
+    .top-nav { max-width: 760px; margin: 0 auto 12px; font-size: 0.9em; }
+    .note { background: var(--bg); border-left: 4px solid var(--accent); padding: 10px 14px; margin: 1em 0; border-radius: 0 4px 4px 0; }
+    .diff-table { width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: 0.92em; }
+    .diff-table th, .diff-table td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+    .diff-table th { background: var(--bg); }
+    footer.page-footer { max-width: 760px; margin: 24px auto 0; font-size: 0.85em; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+    <div class="top-nav"><a href="./index.html">&larr; Links Web に戻る</a></div>
+
+    <div id="manual">
+        <h1>Links Web 取扱説明書</h1>
+        <p class="lead">
+            リンク機構シミュレータ「Links」（Win版）のWeb移植版の使い方です。
+            もともとのWin版の<a href="https://signed.bufsiz.jp/Links.html" target="_blank" rel="noopener">取扱説明書</a>を土台に、
+            Web版での実際の操作・仕様に合わせて書き直しています。用語や考え方はWin版を踏襲していますが、
+            操作方法や一部機能はブラウザ向けに変更されています（詳しくは末尾の「Win版との違い」参照）。
+        </p>
+
+        <div class="note">
+            本サイトは静的サイトです。サーバー側の処理は一切なく、読み込んだ<code>.links</code>/DXFファイルはお使いのブラウザ内だけで処理されます。どこにもアップロードされません。
+        </div>
+
+        <h2>Linksとは</h2>
+        <p>
+            かわさきロボット競技大会向けのリンク機構シミュレータ・設計支援ソフトです。スライダリンクやヘッケンリンクなどの機構をシミュレートし、
+            脚（接地曲線）の上下動を抑える最適化計算や、DXF/AutoCADとの連携ができます。
+        </p>
+
+        <h2>名前（用語）</h2>
+        <p>説明の都合上、以下のように名前を付けています。</p>
+        <ul>
+            <li><strong>クランク</strong>：駆動源から回転する部分（緑）</li>
+            <li><strong>レバー</strong>：クランクとコンロッドをつなぐ部分（ピンク）</li>
+            <li><strong>コンロッド</strong>：先端側の部分（赤）</li>
+            <li><strong>シフト</strong>：コンロッドとクランクの交点（＝オブジェクトの中心。回転の中心でもあります）から、傾きを考慮してずらした量。シフトした点から灰色の軌道が描画されます。</li>
+        </ul>
+        <p><strong>レバー長さを0に設定するとスライダリンクとして扱われます。</strong>この場合レバーの座標がスライダの座標になります。</p>
+        <p>脚前幅・脚後幅で最適化曲線の前後幅を指定できます（値を大きくすると短くなります）。脚幅ピッチで曲線の精度（線分の細かさ）を指定できます。</p>
+
+        <h2>基本操作</h2>
+
+        <h3>ツールバー（アイコン）</h3>
+        <p>
+            画面上部のアイコンをクリックすると各機能を呼び出せます。アイコンにマウスを乗せると機能名がツールチップで表示され、
+            下部のヘルプバーには詳しい説明が表示されます（スマホ等では長押し）。
+        </p>
+
+        <h3>パラメータの操作</h3>
+        <ul>
+            <li><strong>マウスホイール</strong>：編集したいパラメータの上でホイールを回すと数値が変わります。クリックする必要はありません。</li>
+            <li><strong>青い3本線（感度インジケーター）をクリック</strong>：1回のホイール操作で変化する量を、普通→多い→少ない→普通…の順に切り替えます（この3本線自体はホイール操作の対象にはなりません）。</li>
+            <li><strong>数値部分をダブルクリック</strong>：キーボードから直接数値を入力できます。Enterで確定、Escapeでキャンセルです。</li>
+            <li><strong>＋／－ボタン</strong>：スマホ等ホイール操作がしにくい環境向けに、数値をワンタップで増減できます。</li>
+        </ul>
+
+        <h3>ファイルを開く・保存する</h3>
+        <ul>
+            <li>ツールバーの「開く」「上書き保存」「名前を付けて保存」アイコンから、<code>.links</code>形式（JSON）のファイルを読み書きできます。</li>
+            <li>画面に<strong>ファイルをドラッグ＆ドロップ</strong>して開くこともできます。この場合、現在編集中のパラメータは保存されずに開かれるのでご注意下さい。</li>
+            <li>ページを開いたままにしていると、現在の状態は自動的にブラウザのlocalStorageに保存され、次回このページを開いた際に復元するか確認されます。</li>
+        </ul>
+
+        <h3>ダークモード／ベータ版機能表示</h3>
+        <p>
+            右側のアイコンでダークモードのON/OFFを切替できます（既定はライトモード。選択内容は次回訪問時も保持されます）。
+            工具アイコンの「ベータ版機能表示」をONにすると、アークスライダ・デュアルスライダ・ヴァーティカル・ダブルクランクなどの実験的モードと、
+            「AutoCADコマンドをコピー」ボタンが専用の行に表示されます（この表示状態は保存されず、ページを開き直すと毎回非表示に戻ります）。
+        </p>
+
+        <h2>機能</h2>
+
+        <h3>リアルタイム描画</h3>
+        <p>パラメータを変更すると、その場でリンクの動きに反映されます。</p>
+
+        <h3>接地曲線（脚裏）の最適化</h3>
+        <p>
+            脚の接地部分の軌道を計算し、上下動をなるべく抑えるように最適化した曲線を表示します。最適化曲線は折れ線（直線の連続）で近似しており、
+            脚幅ピッチで精度を調整できます。あくまで最適化であり、必ずしも上下動が0になるわけではありません。
+        </p>
+        <p>最適化曲線とDXF読込図面は同時に表示できないため、「DXF表示」アイコンで切り替えます。</p>
+
+        <h3>DXFファイルの読み込み</h3>
+        <p>
+            「DXF読込」アイコンからDXFファイルを読み込めます。Win版はAutoCAD R13/LT95形式のポリラインのみに対応していましたが、
+            Web版はvendorしている<a href="https://github.com/bjnortier/dxf" target="_blank" rel="noopener">dxf</a>ライブラリ（MIT License）により、
+            LWPOLYLINEやDXF2000形式のファイルにも対応しています。
+            クランク・レバー・コンロッド・バックグラウンドとして読み込む際は、図面上の原点と図形の中心点を合わせて下さい。
+        </p>
+
+        <h3>CAD（AutoCAD／DXF）への出力</h3>
+        <p>
+            「DXFファイルを出力」アイコンでDXFファイルとして保存、「AutoCADコマンドをコピー」ボタン（ベータ版機能表示ON時）で
+            AutoCAD用のコマンド文字列をクリップボードにコピーできます。
+        </p>
+        <ul>
+            <li><strong>Shiftを押しながらクリック</strong>：脚（接地曲線）のみを出力します。</li>
+            <li><strong>Ctrlを押しながらクリック</strong>：干渉チェック用のシルエットを出力します（オブジェクト数を増やすほど詳細になります）。</li>
+        </ul>
+
+        <h3>動画出力</h3>
+        <p>
+            「動画出力」アイコンをクリックすると、現在の描画範囲をそのまま1回転分録画し、WebM形式の動画ファイルとしてダウンロードします。
+            Win版の連番ビットマップ＋外部ソフトでのGIFアニメ作成に代わり、ブラウザの録画機能（MediaRecorder）でその場で1ファイルに書き出します。
+        </p>
+
+        <h3>端部軌道表示</h3>
+        <p>
+            最適化曲線の両端部の軌道を表示します。DXF表示中は対象がないためボタンが無効化されます。
+            シフトX・Yを両方とも0にすると、従来の軌道非表示と同等になります。
+        </p>
+
+        <h2>Win版との違い</h2>
+        <table class="diff-table">
+            <tr><th>項目</th><th>Win版</th><th>Web版</th></tr>
+            <tr><td>設定の保存</td><td><code>config.ini</code></td><td>ブラウザのlocalStorage</td></tr>
+            <tr><td>ファイル関連付け</td><td><code>Association.bat</code>で拡張子登録</td><td>該当なし（ブラウザの「開く」/ドラッグ＆ドロップのみ）</td></tr>
+            <tr><td>DXF読込対応形式</td><td>R13/LT95のポリライン中心</td><td>LWPOLYLINE・DXF2000にも対応</td></tr>
+            <tr><td>アニメーション出力</td><td>連番ビットマップ→外部ソフトでGIF化</td><td>WebM動画を直接1ファイル出力</td></tr>
+            <tr><td>背景の明るさ</td><td>スライダーで自由指定</td><td>ダークモードON/OFFの2択に統合</td></tr>
+            <tr><td>ヘルプ表示</td><td>電球アイコンでヘルプモード切替</td><td>アイコンにマウスを乗せると常時ツールチップ＋ヘルプバー表示</td></tr>
+        </table>
+
+        <h2>注意事項</h2>
+        <ul>
+            <li>本ウェブアプリは開発中のβ版です。全ての機能を使いたい場合は<a href="https://signed.bufsiz.jp/Links.html" target="_blank" rel="noopener">Win版</a>をご利用下さい。Win版の開発は停止しており、今後の追加機能実装の予定はありません。</li>
+            <li>このソフトを使用したことによる損害等について、一切の補償は出来ません。予めご了承下さい。</li>
+        </ul>
+
+        <h2>関連リンク</h2>
+        <ul>
+            <li><a href="https://signed.bufsiz.jp/Links.html" target="_blank" rel="noopener">Win版取扱説明書</a></li>
+            <li><a href="https://github.com/sin1n24/Links" target="_blank" rel="noopener">GitHubリポジトリ（ソースコード）</a></li>
+        </ul>
+    </div>
+
+    <footer class="page-footer">Links Web β</footer>
+</body>
+</html>
