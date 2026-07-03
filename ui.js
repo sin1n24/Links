@@ -27,7 +27,6 @@ class UI {
         this.modalButtons = document.getElementById('modal-buttons');
         this.canvasWrap = document.getElementById('canvas-wrap');
         this.canvas = document.getElementById('main-canvas');
-        this.selectRect = document.getElementById('select-rect');
         this.fileInput = document.getElementById('file-input');
         this.dxfFileInput = document.getElementById('dxf-file-input');
 
@@ -164,7 +163,7 @@ class UI {
      * viewing the optimized curve (inviting a click to switch to DXF) and
      * the "optimize" icon while viewing DXF (hecken.h:706).
      */
-    _makeButton(container, { text, help, onClick, toggleGetter, activeClass = 'active', icon, iconOn, emoji, emojiOn }) {
+    _makeButton(container, { text, help, onClick, toggleGetter, activeClass = 'active', icon, iconOn, emoji, emojiOn, disabledGetter }) {
         const btn = document.createElement('button');
         btn.className = 'icon-btn';
         btn.type = 'button';
@@ -191,11 +190,17 @@ class UI {
 
         const render = () => {
             const active = toggleGetter ? !!toggleGetter() : false;
-            label.textContent = typeof text === 'function' ? text() : text;
+            const name = typeof text === 'function' ? text() : text;
+            label.textContent = name;
             if (toggleGetter) btn.classList.toggle(activeClass, active);
-            if (help) btn.title = typeof help === 'function' ? help() : help;
+            // The native tooltip (what actually appears "when pointing at"
+            // an icon) shows the short function name - the same text this
+            // button used before icons hid it (see class header) - while
+            // the persistent help bar below keeps the longer description.
+            btn.title = name;
             if (img) img.src = `icons/${(active && iconOn) ? iconOn : icon}`;
             if (emojiSpan) emojiSpan.textContent = (active && emojiOn) ? emojiOn : emoji;
+            if (disabledGetter) btn.disabled = !!disabledGetter();
         };
         render();
         btn.addEventListener('click', (e) => onClick(e, render));
@@ -242,21 +247,21 @@ class UI {
             },
         });
         this._makeButton(this.toolbar, {
-            text: () => (sim.menu.mstop.value ? '回転停止' : '回転開始'),
+            text: () => (sim.menu.mstop.value ? '停止' : '再生'),
             icon: 'start.png', iconOn: 'stop.png',
             help: '調整をする際には回転を停止させホイールで角度を変えると確認しやすいです',
             toggleGetter: () => sim.menu.mstop.value,
             onClick: (e, render) => { sim.menu.mstop.value = !sim.menu.mstop.value; render(); },
         });
         this._makeButton(this.toolbar, {
-            text: () => (sim.menu.mturn.value ? '反時計回りにする' : '時計回りにする'),
+            text: () => (sim.menu.mturn.value ? '反時計回り' : '時計回り'),
             icon: 'lturn.png', iconOn: 'rturn.png',
             help: '回転方向を切替えます',
             toggleGetter: () => sim.menu.mturn.value,
             onClick: (e, render) => { sim.menu.mturn.value = !sim.menu.mturn.value; render(); },
         });
         this._makeButton(this.toolbar, {
-            text: () => (sim.dxf ? '最適化曲線表示にする' : 'DXF表示にする'),
+            text: () => (sim.dxf ? '最適化曲線表示' : 'DXF表示'),
             // hecken.h:706 - icon follows the same "shows the action" convention
             // as the caption: DXF-icon while viewing the curve, opt-icon while viewing DXF.
             icon: 'dxf.png', iconOn: 'opt.png',
@@ -276,16 +281,22 @@ class UI {
         });
 
         this._makeButton(this.toolbar, {
-            text: '端部軌道を表示', icon: 'orbit.png', help: '最適化曲線の端部軌道を表示します（DXF時には表示されません）',
-            onClick: () => sim.toggleBothLegOrbits(),
+            text: () => (sim.exist_frontleg_orbit || sim.exist_rearleg_orbit ? '端部軌道を隠す' : '端部軌道を表示'),
+            icon: 'orbit.png',
+            help: () => (sim.dxf
+                ? '最適化曲線の端部軌道です。DXF表示中は表示対象がないため無効です。'
+                : '最適化曲線の端部軌道を表示します'),
+            toggleGetter: () => sim.exist_frontleg_orbit || sim.exist_rearleg_orbit,
+            disabledGetter: () => sim.dxf,
+            onClick: (e, render) => { sim.toggleBothLegOrbits(); render(); },
         });
         this._makeButton(this.toolbar, {
             text: '動画出力', icon: 'anime.png',
-            help: '範囲を選択してWebM動画として出力します',
+            help: '現在の描画範囲をそのままWebM動画として出力します',
             onClick: () => this.callbacks.startAnimationCapture(),
         });
         this._makeButton(this.toolbar, {
-            text: () => (document.body.classList.contains('dark') ? 'ライトモードにする' : 'ダークモードにする'),
+            text: () => (document.body.classList.contains('dark') ? 'ライトモード' : 'ダークモード'),
             emoji: '🌙', emojiOn: '☀',
             help: '画面配色をダーク/ライトで切替えます',
             toggleGetter: () => document.body.classList.contains('dark'),
@@ -565,6 +576,18 @@ class UI {
             [...sensitivity.children].forEach((el, idx) => el.classList.toggle('on', idx < count));
         };
         updateSensitivity();
+
+        // The sensitivity indicator is its own click target for cycling
+        // magnitude (mid->high->low->mid) - not a wheel target, so scrolling
+        // while positioned over the dots still changes the value like the
+        // rest of the row, not the sensitivity (middle-click anywhere in the
+        // row still works too, kept as a power-user shortcut).
+        sensitivity.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this._rowState.set(def.key, modeCycle[this._rowState.get(def.key)]);
+            updateSensitivity();
+        });
+        sensitivity.addEventListener('wheel', (e) => e.stopPropagation());
 
         const applyStep = (sign) => {
             const magni = def.magni ?? 1;

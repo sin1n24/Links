@@ -163,10 +163,7 @@ window.onload = () => {
     }
 
     async function startAnimationCapture() {
-        await AnimationCapture.run({
-            canvas, canvasWrap: document.getElementById('canvas-wrap'),
-            selectRectEl: document.getElementById('select-rect'), sim, graphics, ui,
-        });
+        await AnimationCapture.run({ canvas, sim, ui });
     }
 
     const ui = new UI(sim, graphics, {
