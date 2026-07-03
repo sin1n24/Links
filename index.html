@@ -68,6 +68,9 @@
         #ui-container { display: flex; flex-direction: column; gap: 8px; flex: 1 1 300px; min-width: 280px; max-width: 380px; }
         .section { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 8px; }
         .section h3 { margin: 0 0 6px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+        #manual-link-section { text-align: center; }
+        #manual-link-section a { color: var(--text); text-decoration: none; font-size: 13px; }
+        #manual-link-section a:hover { color: var(--accent); text-decoration: underline; }
 
         .param-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; padding: 3px 4px; border-radius: 3px; cursor: ns-resize; user-select: none; }
         .param-row:hover { background: var(--surface-hover); }
@@ -96,7 +99,7 @@
         #site-footer { flex-basis: 100%; display: flex; align-items: center; justify-content: center; gap: 36px; padding: 8px 0 2px; }
         #site-footer a { display: inline-flex; align-items: center; opacity: 0.8; }
         #site-footer a:hover { opacity: 1; }
-        #site-footer .footer-logo { height: 78px; width: auto; display: block; }
+        #site-footer .footer-logo { height: 52px; width: auto; display: block; }
         #site-footer .footer-logo-dark { display: none; }
         body.dark #site-footer .footer-logo-light { display: none; }
         body.dark #site-footer .footer-logo-dark { display: block; }
@@ -118,6 +121,9 @@
         <div class="section">
             <h3>パラメータ</h3>
             <div id="param-panel"></div>
+        </div>
+        <div class="section" id="manual-link-section">
+            <a href="manual.html" target="_blank" rel="noopener">📖 取扱説明書</a>
         </div>
     </div>
 
