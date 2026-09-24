@@ -72,6 +72,15 @@
         #ui-container { display: flex; flex-direction: column; gap: 8px; flex: 1 1 300px; min-width: 280px; max-width: 380px; }
         .section { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 8px; }
         .section h3 { margin: 0 0 6px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+        /* ---------- 関連商品 ---------- */
+        .rp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; list-style: none; margin: 0; padding: 0; }
+        .rp-card { display: flex; flex-direction: column; gap: 6px; height: 100%; padding: 8px; background: var(--surface);
+                    border: 1px solid var(--border); border-radius: 8px; color: var(--text); text-decoration: none; transition: border-color .2s; }
+        .rp-card:hover { border-color: var(--accent); }
+        .rp-card img { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #fff; border-radius: 6px; }
+        .rp-card span { font-size: 11.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3;
+                         -webkit-box-orient: vertical; overflow: hidden; }
+
         #manual-link-section { text-align: center; }
         #manual-link-section a { color: var(--text); text-decoration: none; font-size: 13px; }
         #manual-link-section a:hover { color: var(--accent); text-decoration: underline; }
@@ -129,6 +138,10 @@
         <div class="section" id="manual-link-section">
             <a href="manual.html" target="_blank" rel="noopener">📖 取扱説明書</a>
         </div>
+        <div class="section" id="related-section">
+            <h3>関連商品</h3>
+            <ul class="rp-grid" id="rp-grid"></ul>
+        </div>
     </div>
 
     <footer id="site-footer">
@@ -165,5 +178,36 @@
     <script src="animation.js"></script>
     <script src="ui.js"></script>
     <script src="main.js"></script>
+    <script>
+    // 関連商品（Amazonアソシエイト: sin1n24-22）。5点からランダムで2点を表示
+    (() => {
+      const POOL = [
+        ["4526061891", "めっちゃ、メカメカ!リンク機構99→∞ ―機構アイデア発想のネタ帳", "51y7siOD4nL"],
+        ["4777519805", "キットで学ぶ「リンク機構」: 「機械工学」の重要分野「機構学」! (I/O BOOKS)", "91XWCq+tgjL"],
+        ["B0BZBSVC82", "[リトルスワロー] 風力歩行ロボット 模型 DIY キット ウインドパワービースト", "616vAbmwfZL"],
+        ["B0CJ6BHYPH", "タミヤ 楽しい工作シリーズ No.256 重心移動歩行ロボット 工作セット 70256", "61HMtvAff7L"],
+        ["B0CRYJBKQQ", "Bambu Lab A1 mini 3Dプリンター 造形サイズ 180×180×180mm", "71X5s5izhsL"]
+      ];
+      for (let i = POOL.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [POOL[i], POOL[j]] = [POOL[j], POOL[i]];
+      }
+      const grid = document.getElementById("rp-grid");
+      for (const [asin, title, img] of POOL.slice(0, 2)) {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.className = "rp-card";
+        a.href = "https://www.amazon.co.jp/dp/" + asin + "/?tag=sin1n24-22";
+        a.target = "_blank";
+        a.rel = "noopener noreferrer sponsored";
+        const im = document.createElement("img");
+        im.src = "https://m.media-amazon.com/images/I/" + img + "._AC_SX679_.jpg";
+        im.alt = ""; im.loading = "lazy"; im.decoding = "async";
+        const sp = document.createElement("span");
+        sp.textContent = title;
+        a.append(im, sp); li.append(a); grid.append(li);
+      }
+    })();
+    </script>
 </body>
 </html>

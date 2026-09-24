@@ -36,6 +36,20 @@
     .diff-table th, .diff-table td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
     .diff-table th { background: var(--bg); }
     footer.page-footer { max-width: 760px; margin: 24px auto 0; font-size: 0.85em; color: var(--muted); text-align: center; }
+    footer.page-footer .footer-logo { display: block; width: fit-content; margin: 0 auto 6px; opacity: .85; }
+    footer.page-footer .footer-logo:hover { opacity: 1; }
+    footer.page-footer .footer-logo img { height: 52px; width: auto; display: block; }
+    .rp-section { max-width: 760px; margin: 20px auto 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; }
+    .rp-section h2 { margin: 0 0 12px; font-size: 1.1em; border: 0; padding: 0; }
+        /* ---------- 関連商品 ---------- */
+        .rp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; list-style: none; margin: 0; padding: 0; }
+        .rp-card { display: flex; flex-direction: column; gap: 6px; height: 100%; padding: 8px; background: var(--bg);
+                    border: 1px solid var(--border); border-radius: 8px; color: var(--text); text-decoration: none; transition: border-color .2s; }
+        .rp-card:hover { border-color: var(--accent); }
+        .rp-card img { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #fff; border-radius: 6px; }
+        .rp-card span { font-size: 12px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3;
+                         -webkit-box-orient: vertical; overflow: hidden; }
+
 </style>
 </head>
 <body>
@@ -168,6 +182,22 @@
         </ul>
     </div>
 
-    <footer class="page-footer">Links Web β</footer>
+    <section class="rp-section" aria-labelledby="rp-title">
+        <h2 id="rp-title">関連商品</h2>
+        <ul class="rp-grid">
+            <li><a class="rp-card" href="https://www.amazon.co.jp/dp/4526061891/?tag=sin1n24-22" target="_blank" rel="noopener noreferrer sponsored"><img src="https://m.media-amazon.com/images/I/51y7siOD4nL._AC_SX679_.jpg" alt="" loading="lazy" decoding="async"><span>めっちゃ、メカメカ!リンク機構99→∞ ―機構アイデア発想のネタ帳</span></a></li>
+            <li><a class="rp-card" href="https://www.amazon.co.jp/dp/4777519805/?tag=sin1n24-22" target="_blank" rel="noopener noreferrer sponsored"><img src="https://m.media-amazon.com/images/I/91XWCq+tgjL._AC_SX679_.jpg" alt="" loading="lazy" decoding="async"><span>キットで学ぶ「リンク機構」: 「機械工学」の重要分野「機構学」! (I/O BOOKS)</span></a></li>
+            <li><a class="rp-card" href="https://www.amazon.co.jp/dp/B0BZBSVC82/?tag=sin1n24-22" target="_blank" rel="noopener noreferrer sponsored"><img src="https://m.media-amazon.com/images/I/616vAbmwfZL._AC_SX679_.jpg" alt="" loading="lazy" decoding="async"><span>[リトルスワロー] 風力歩行ロボット 模型 DIY キット ウインドパワービースト</span></a></li>
+            <li><a class="rp-card" href="https://www.amazon.co.jp/dp/B0CJ6BHYPH/?tag=sin1n24-22" target="_blank" rel="noopener noreferrer sponsored"><img src="https://m.media-amazon.com/images/I/61HMtvAff7L._AC_SX679_.jpg" alt="" loading="lazy" decoding="async"><span>タミヤ 楽しい工作シリーズ No.256 重心移動歩行ロボット 工作セット 70256</span></a></li>
+            <li><a class="rp-card" href="https://www.amazon.co.jp/dp/B0CRYJBKQQ/?tag=sin1n24-22" target="_blank" rel="noopener noreferrer sponsored"><img src="https://m.media-amazon.com/images/I/71X5s5izhsL._AC_SX679_.jpg" alt="" loading="lazy" decoding="async"><span>Bambu Lab A1 mini 3Dプリンター 造形サイズ 180×180×180mm</span></a></li>
+        </ul>
+    </section>
+
+    <footer class="page-footer">
+        <a class="footer-logo" href="https://sin1.studio/" target="_blank" rel="noopener" aria-label="sin1.studio トップページへ">
+            <img src="sss_logo_3x1_B.png" alt="sin1's studio">
+        </a>
+        Links Web β
+    </footer>
 </body>
 </html>
